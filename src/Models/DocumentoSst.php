@@ -135,6 +135,15 @@ class DocumentoSst
             $sql .= ' AND d.os_id = ?';
             $params[] = (int)$filters['os_id'];
         }
+        if (!empty($filters['date'])) {
+            $sql .= ' AND DATE(os.data_agenda) = ?';
+            $params[] = $filters['date'];
+        }
+        if (!empty($filters['search'])) {
+            $sql .= ' AND (os.cliente LIKE ? OR os.protocolo LIKE ? OR os.ixc_id LIKE ? OR u.name LIKE ?)';
+            $like = '%' . $filters['search'] . '%';
+            array_push($params, $like, $like, $like, $like);
+        }
 
         $limit = max(1, min(500, $limit));
         $offset = max(0, $offset);
@@ -145,14 +154,34 @@ class DocumentoSst
         return $stmt->fetchAll();
     }
 
+    /** Contagem de documentos por status (opcionalmente de um técnico). */
+    public static function contarPorStatus(?int $tecnicoId = null): array
+    {
+        $sql = 'SELECT status, COUNT(*) AS qtd FROM documentos_sst';
+        $params = [];
+        if ($tecnicoId !== null) {
+            $sql .= ' WHERE tecnico_id = ?';
+            $params[] = $tecnicoId;
+        }
+        $sql .= ' GROUP BY status';
+        $stmt = Database::getInstance()->prepare($sql);
+        $stmt->execute($params);
+
+        $out = array_fill_keys(self::STATUSES, 0);
+        foreach ($stmt->fetchAll() as $r) {
+            $out[$r['status']] = (int)$r['qtd'];
+        }
+        $out['total'] = array_sum($out);
+        return $out;
+    }
+
     public static function updateStatus(int $id, string $status): void
     {
         $stmt = Database::getInstance()->prepare('UPDATE documentos_sst SET status = ? WHERE id = ?');
         $stmt->execute([$status, $id]);
     }
 
-    public static function setSupervisor(int $id, int $supervisorId): void
-    {
+    public static function setSupervisor(int $id, int $supervisorId): void    {
         $stmt = Database::getInstance()->prepare('UPDATE documentos_sst SET supervisor_id = ? WHERE id = ?');
         $stmt->execute([$supervisorId, $id]);
     }

@@ -66,6 +66,7 @@ route('DELETE', '/api/users/{id}', [\App\Controllers\UserController::class, 'des
 // ── Documentos APR/PT ───────────────────────────────────────
 route('GET', '/api/catalogo', [\App\Controllers\CatalogoController::class, 'index']);
 route('GET', '/api/documentos', [\App\Controllers\DocumentoSstController::class, 'index']);
+route('GET', '/api/documentos/resumo', [\App\Controllers\DocumentoSstController::class, 'resumo']);
 route('POST', '/api/documentos', [\App\Controllers\DocumentoSstController::class, 'store']);
 route('GET', '/api/documentos/{id}', [\App\Controllers\DocumentoSstController::class, 'show']);
 route('POST', '/api/documentos/{id}/assinar', [\App\Controllers\DocumentoSstController::class, 'assinar']);

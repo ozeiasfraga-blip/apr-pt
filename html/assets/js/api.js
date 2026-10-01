@@ -84,6 +84,7 @@ const Api = (() => {
             return request('GET', '/documentos' + (qs ? '?' + qs : ''));
         },
         getDocumento: (id) => request('GET', '/documentos/' + id),
+        resumoDocumentos: () => request('GET', '/documentos/resumo'),
         saveDocumento: (d) => request('POST', '/documentos', d),
         assinarDocumento: (id, dados) => request('POST', `/documentos/${id}/assinar`, dados),
         aprovarDocumento: (id, dados) => request('POST', `/documentos/${id}/aprovar`, dados),

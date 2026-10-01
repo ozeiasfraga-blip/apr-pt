@@ -23,6 +23,8 @@ class DocumentoSstController
         $filters = [
             'status' => $_GET['status'] ?? null,
             'os_id' => $_GET['os_id'] ?? null,
+            'date' => $_GET['date'] ?? null,
+            'search' => $_GET['search'] ?? null,
         ];
 
         if ($authUser->role === 'tecnico') {
@@ -32,6 +34,14 @@ class DocumentoSstController
         }
 
         Response::success(DocumentoSst::list($filters));
+    }
+
+    /** GET /api/documentos/resumo — contagem por status (foco APR/PT). */
+    public static function resumo(): void
+    {
+        $authUser = Middleware::requireAuth();
+        $tecnicoId = $authUser->role === 'tecnico' ? (int)$authUser->user_id : null;
+        Response::success(DocumentoSst::contarPorStatus($tecnicoId));
     }
 
     public static function show(string $id): void

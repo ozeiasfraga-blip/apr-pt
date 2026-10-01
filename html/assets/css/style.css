@@ -158,9 +158,14 @@ textarea { width: 100%; padding: 10px 11px; border: 1px solid #94a3b8; border-ra
 .btn-link { background: var(--brand); color: #fff; text-decoration: none; padding: 10px 16px; border-radius: 7px; font-size: 14px; font-weight: 600; }
 .btn-link:hover { background: var(--brand-2); }
 
+/* Resumo (chips) */
+.resumo { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.stat { border: 0; border-radius: 999px; padding: 8px 15px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.stat:hover { filter: brightness(.95); }
+.stat.total { background: var(--brand); color: #fff; }
+
 /* Abas */
-.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
-.tab { background: #dbe3ec; color: #1e293b; border-radius: 7px; padding: 9px 15px; font-size: 14px; font-weight: 600; border: 1px solid var(--line); }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }.tab { background: #dbe3ec; color: #1e293b; border-radius: 7px; padding: 9px 15px; font-size: 14px; font-weight: 600; border: 1px solid var(--line); }
 .tab:hover { background: #cbd5e1; }
 .tab.active { background: var(--brand); color: #fff; border-color: var(--brand); }
 

@@ -32,7 +32,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
             <div class="brand"><?= htmlspecialchars($_ENV['APP_NAME'] ?? 'APR/PT') ?></div>
             <nav id="nav" class="nav">
                 <a href="#os" data-view="os">Ordens de Serviço</a>
-                <a href="#documentos" data-view="documentos">Documentos</a>
+                <a href="#documentos" data-view="documentos">APR/PT</a>
                 <a href="#usuarios" data-view="usuarios" data-roles="supervisor,admin">Usuários</a>
                 <a href="#modelo" data-view="modelo" data-roles="supervisor,admin">Modelo APR/PT</a>
             </nav>

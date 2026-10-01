@@ -79,7 +79,12 @@
             <div class="filters">
                 <input type="search" id="os-search" placeholder="Buscar cliente, endereço, protocolo…">
                 ${isSupervisor() ? '<select id="os-tec"><option value="">Todos os técnicos</option></select>' : ''}
-                <select id="os-status"><option value="">Todos os status</option>${Object.entries(OS_STATUS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+                <select id="os-status"><option value="">Status da OS: todos</option>${Object.entries(OS_STATUS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+                <select id="os-doc">
+                    <option value="">APR/PT: todos</option>
+                    <option value="sem">Sem documento</option>
+                    ${STATUS_ORDEM.map((k) => `<option value="${k}">${STATUS_LABEL[k]}</option>`).join('')}
+                </select>
             </div>
             <div id="os-body"><p class="muted">Carregando…</p></div>`;
 
@@ -96,6 +101,7 @@
         $('#btn-hoje').addEventListener('click', () => { $('#os-date').value = localDate(); load(); });
         $('#os-search').addEventListener('input', applyOsFilters);
         $('#os-status').addEventListener('change', applyOsFilters);
+        if ($('#os-doc')) $('#os-doc').addEventListener('change', applyOsFilters);
         if ($('#os-tec')) $('#os-tec').addEventListener('change', applyOsFilters);
         load();
     }
@@ -110,9 +116,11 @@
         const q = ($('#os-search').value || '').toLowerCase();
         const tec = $('#os-tec') ? $('#os-tec').value : '';
         const st = $('#os-status').value;
+        const dd = $('#os-doc') ? $('#os-doc').value : '';
         const rows = osCache.filter((o) => {
             if (tec && String(o.id_tecnico) !== tec) return false;
             if (st && o.status_ixc !== st) return false;
+            if (dd) { const s = o.documento ? o.documento.status : 'sem'; if (s !== dd) return false; }
             if (q && ![o.cliente, o.tecnico_nome, o.endereco, o.bairro, o.cidade, o.assunto, o.protocolo, o.ixc_id].join(' ').toLowerCase().includes(q)) return false;
             return true;
         });
@@ -139,39 +147,79 @@
         </tr>`;
     }
 
-    // ── View: Documentos ────────────────────────────────────
+    // ── View: APR/PT (documentos) ───────────────────────────
+    const STATUS_ORDEM = ['aguardando_aprovacao', 'rascunho', 'liberada', 'em_execucao', 'encerrada', 'cancelada'];
     async function renderDocumentos() {
         const c = $('#content');
         c.innerHTML = `
             <div class="page-head">
-                <h1>Documentos APR/PT</h1>
+                <h1>APR / PT</h1>
                 <div class="toolbar">
-                    <select id="d-status">
-                        <option value="">Todos os status</option>
-                        ${Object.entries(STATUS_LABEL).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
-                    </select>
+                    <input type="date" id="d-date" value="${localDate()}">
+                    <button id="d-hoje" class="secondary">Hoje</button>
+                    <button id="d-todos" class="secondary">Todo o período</button>
                 </div>
+            </div>
+            <div id="d-resumo" class="resumo"></div>
+            <div class="filters">
+                <input type="search" id="d-search" placeholder="Buscar cliente, OS, técnico…">
+                ${isSupervisor() ? '<select id="d-tec"><option value="">Todos os técnicos</option></select>' : ''}
+                <select id="d-status"><option value="">Todos os status</option>${STATUS_ORDEM.map((k) => `<option value="${k}">${STATUS_LABEL[k]}</option>`).join('')}</select>
             </div>
             <div id="d-body"><p class="muted">Carregando…</p></div>`;
 
-        const load = async () => {
+        const resumo = async () => {
             try {
-                const docs = await Api.listDocumentos({ status: $('#d-status').value });
+                const r = await Api.resumoDocumentos();
+                const chips = STATUS_ORDEM.filter((k) => r[k] > 0)
+                    .map((k) => `<button class="stat tag-${k}" data-set="${k}">${STATUS_LABEL[k]}: <strong>${r[k]}</strong></button>`).join('');
+                $('#d-resumo').innerHTML = `<span class="stat total">Total: <strong>${r.total}</strong></span>${chips}`;
+                $$('#d-resumo [data-set]').forEach((b) => b.addEventListener('click', () => {
+                    $('#d-status').value = b.dataset.set; load();
+                }));
+            } catch (_) { $('#d-resumo').innerHTML = ''; }
+        };
+
+        const load = async () => {
+            const params = {};
+            if ($('#d-date').value) params.date = $('#d-date').value;
+            if ($('#d-status').value) params.status = $('#d-status').value;
+            if ($('#d-search').value) params.search = $('#d-search').value;
+            if ($('#d-tec') && $('#d-tec').value) params.tecnico_id = $('#d-tec').value;
+            try {
+                const docs = await Api.listDocumentos(params);
+                fillDocTecOptions(docs);
                 $('#d-body').innerHTML = docs.length ? `<table class="grid">
-                    <thead><tr><th>OS</th><th>Cliente</th><th>Técnico</th><th>Status</th><th>Supervisor</th><th></th></tr></thead>
+                    <thead><tr><th>OS</th><th>Cliente</th><th>Técnico</th><th>Data</th><th>Status</th><th>Supervisor</th><th></th></tr></thead>
                     <tbody>${docs.map(rowDoc).join('')}</tbody></table>`
-                    : '<p class="muted">Nenhum documento encontrado.</p>';
+                    : '<p class="muted">Nenhum documento encontrado com esses filtros.</p>';
                 $$('[data-abrir-doc]').forEach((b) => b.addEventListener('click', () => { location.hash = '#doc/' + b.dataset.abrirDoc; }));
             } catch (e) { $('#d-body').innerHTML = `<p class="error">${esc(e.message)}</p>`; }
         };
+
+        const fillDocTecOptions = (docs) => {
+            const sel = $('#d-tec'); if (!sel || sel.value) return;
+            const mapa = new Map();
+            docs.forEach((d) => { if (d.tecnico_id) mapa.set(String(d.tecnico_id), d.tecnico_nome || ('#' + d.tecnico_id)); });
+            sel.innerHTML = '<option value="">Todos os técnicos</option>' + [...mapa.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, n]) => `<option value="${id}">${esc(n)}</option>`).join('');
+        };
+
+        $('#d-hoje').addEventListener('click', () => { $('#d-date').value = localDate(); load(); });
+        $('#d-todos').addEventListener('click', () => { $('#d-date').value = ''; load(); });
+        $('#d-date').addEventListener('change', load);
+        $('#d-search').addEventListener('input', debounce(load, 350));
         $('#d-status').addEventListener('change', load);
+        if ($('#d-tec')) $('#d-tec').addEventListener('change', load);
+        resumo();
         load();
     }
     function rowDoc(d) {
+        const data = (d.data_agenda || '').slice(0, 10).split('-').reverse().join('/');
         return `<tr>
             <td>#${esc(d.ixc_id || d.os_id)}</td>
             <td>${esc(d.cliente || '')}</td>
             <td>${esc(d.tecnico_nome || '')}</td>
+            <td>${esc(data)}</td>
             <td><span class="tag tag-${d.status}">${STATUS_LABEL[d.status] || d.status}</span></td>
             <td>${esc(d.supervisor_nome || '—')}</td>
             <td><button class="link" data-abrir-doc="${d.os_id}">Abrir</button></td>
