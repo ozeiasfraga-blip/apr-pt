@@ -82,8 +82,8 @@
                 </div>
             </div>
             <div class="filters">
-                <input type="search" id="os-search" placeholder="Buscar cliente, técnico, endereço…">
-                <select id="os-tec"><option value="">Todos os técnicos</option></select>
+                <input type="search" id="os-search" placeholder="Buscar cliente, endereço, protocolo…">
+                ${podeSync ? '<select id="os-tec"><option value="">Todos os técnicos</option></select>' : ''}
                 <select id="os-status"><option value="">Todos os status</option>${Object.entries(OS_STATUS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
             </div>
             <div id="os-body"><p class="muted">Carregando…</p></div>`;
@@ -111,13 +111,14 @@
         $('#os-date').addEventListener('change', load);
         $('#btn-hoje').addEventListener('click', () => { $('#os-date').value = localDate(); load(); });
         $('#os-search').addEventListener('input', applyOsFilters);
-        $('#os-tec').addEventListener('change', applyOsFilters);
         $('#os-status').addEventListener('change', applyOsFilters);
+        if ($('#os-tec')) $('#os-tec').addEventListener('change', applyOsFilters);
         load();
     }
 
     function fillTecOptions() {
         const sel = $('#os-tec');
+        if (!sel) return;
         const atual = sel.value;
         const mapa = new Map();
         osCache.forEach((o) => {
@@ -131,7 +132,7 @@
 
     function applyOsFilters() {
         const q = ($('#os-search').value || '').toLowerCase();
-        const tec = $('#os-tec').value;
+        const tec = $('#os-tec') ? $('#os-tec').value : '';
         const st = $('#os-status').value;
 
         const rows = osCache.filter((o) => {

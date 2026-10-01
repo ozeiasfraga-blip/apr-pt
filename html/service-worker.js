@@ -1,6 +1,6 @@
 // Service Worker — cache do app shell para funcionamento offline.
 // As chamadas /api/* são sempre de rede; o offline de dados será tratado com IndexedDB (fases seguintes).
-const CACHE = 'aprpt-shell-v2';
+const CACHE = 'aprpt-shell-v3';
 const SHELL = [
     '/',
     '/assets/css/style.css',
