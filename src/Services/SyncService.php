@@ -27,6 +27,13 @@ class SyncService
         $fim = $date . ' 23:59:59';
         $pageSize = (int)($_ENV['IXC_PAGE_SIZE'] ?? 100);
 
+        // Mantém o cache de nomes de técnicos atualizado (opcional; não trava a sync)
+        try {
+            self::sincronizarFuncionarios($ixc);
+        } catch (Exception $e) {
+            error_log('APR/PT: falha ao atualizar funcionarios_cache: ' . $e->getMessage());
+        }
+
         $rows = [];
         $page = 1;
         try {
@@ -202,6 +209,33 @@ class SyncService
         $ixc = new IxcService();
         $rows = $ixc->listAll('funcionarios', [], 'funcionarios.id');
         return ['total' => count($rows), 'registros' => $rows];
+    }
+
+    /** Atualiza o cache local de funcionários (nome/função/ativo). */
+    public static function sincronizarFuncionarios(?IxcService $ixc = null): int
+    {
+        $ixc = $ixc ?? new IxcService();
+        $rows = $ixc->listAll('funcionarios', [], 'funcionarios.id');
+
+        $stmt = Database::getInstance()->prepare(
+            'INSERT INTO funcionarios_cache (ixc_id, nome, id_funcao, ativo, atualizado_em)
+             VALUES (?, ?, ?, ?, NOW())
+             ON DUPLICATE KEY UPDATE nome=VALUES(nome), id_funcao=VALUES(id_funcao),
+                ativo=VALUES(ativo), atualizado_em=NOW()'
+        );
+
+        $count = 0;
+        foreach ($rows as $r) {
+            if (empty($r['id'])) continue;
+            $stmt->execute([
+                (int)$r['id'],
+                $r['funcionario'] ?? null,
+                isset($r['id_funcao']) && $r['id_funcao'] !== '' ? (int)$r['id_funcao'] : null,
+                $r['ativo'] ?? null,
+            ]);
+            $count++;
+        }
+        return $count;
     }
 
     private static function registrarLog(string $recurso, int $total, string $status, ?string $mensagem): void

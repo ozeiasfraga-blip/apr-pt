@@ -100,7 +100,10 @@ class OrdemServico
      */
     public static function listByTecnico(int $ixcTecnicoId, ?string $date = null, ?string $since = null): array
     {
-        $sql = 'SELECT * FROM ordens_servico WHERE id_tecnico = ?';
+        $sql = 'SELECT os.*, fc.nome AS tecnico_nome
+                FROM ordens_servico os
+                LEFT JOIN funcionarios_cache fc ON fc.ixc_id = os.id_tecnico
+                WHERE os.id_tecnico = ?';
         $params = [$ixcTecnicoId];
 
         if ($date !== null) {
@@ -123,9 +126,11 @@ class OrdemServico
      */
     public static function list(array $filters = [], int $limit = 200, int $offset = 0): array
     {
-        $sql = 'SELECT os.*,
+        $sql = 'SELECT os.*, fc.nome AS tecnico_nome,
                     (SELECT d.status FROM documentos_sst d WHERE d.os_id = os.id ORDER BY d.id DESC LIMIT 1) AS doc_status
-                FROM ordens_servico os WHERE 1=1';
+                FROM ordens_servico os
+                LEFT JOIN funcionarios_cache fc ON fc.ixc_id = os.id_tecnico
+                WHERE 1=1';
         $params = [];
 
         if (!empty($filters['id_tecnico'])) {
@@ -141,9 +146,9 @@ class OrdemServico
             $params[] = $filters['date'];
         }
         if (!empty($filters['search'])) {
-            $sql .= ' AND (os.cliente LIKE ? OR os.protocolo LIKE ? OR os.endereco LIKE ?)';
+            $sql .= ' AND (os.cliente LIKE ? OR os.protocolo LIKE ? OR os.endereco LIKE ? OR fc.nome LIKE ?)';
             $like = '%' . $filters['search'] . '%';
-            array_push($params, $like, $like, $like);
+            array_push($params, $like, $like, $like, $like);
         }
 
         $limit = max(1, min(500, $limit));

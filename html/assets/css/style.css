@@ -48,6 +48,10 @@ h1 { font-size: 20px; margin: 0; }
 .page-head h1 { font-size: 22px; }
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
 
+/* Filtros */
+.filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.filters input, .filters select { margin: 0; width: auto; flex: 1 1 180px; }
+
 /* Forms */
 label { display: block; margin-bottom: 12px; font-size: 14px; }
 label.inline { display: flex; align-items: center; gap: 8px; }

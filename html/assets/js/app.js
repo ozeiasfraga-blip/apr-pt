@@ -66,32 +66,33 @@
     }
 
     // ── View: Ordens de Serviço ─────────────────────────────
+    const OS_STATUS = { A: 'Aberta', AN: 'Análise', EN: 'Encaminhada', AS: 'Assumida', AG: 'Agendada', DS: 'Deslocamento', EX: 'Execução', F: 'Finalizada', RAG: 'Aguard. agendamento' };
+    let osCache = [];
+
     async function renderOs() {
         const c = $('#content');
         const podeSync = ['supervisor', 'admin'].includes(state.user.role);
-        const hoje = new Date().toISOString().slice(0, 10);
         c.innerHTML = `
             <div class="page-head">
                 <h1>Ordens de Serviço</h1>
                 <div class="toolbar">
-                    <input type="date" id="os-date" value="${hoje}">
+                    <input type="date" id="os-date" value="${localDate()}">
+                    <button id="btn-hoje" class="secondary">Hoje</button>
                     ${podeSync ? '<button id="btn-sync">Sincronizar IXC</button>' : ''}
                 </div>
+            </div>
+            <div class="filters">
+                <input type="search" id="os-search" placeholder="Buscar cliente, técnico, endereço…">
+                <select id="os-tec"><option value="">Todos os técnicos</option></select>
+                <select id="os-status"><option value="">Todos os status</option>${Object.entries(OS_STATUS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
             </div>
             <div id="os-body"><p class="muted">Carregando…</p></div>`;
 
         const load = async () => {
-            const date = $('#os-date').value;
             try {
-                const os = await Api.listOs({ date });
-                const body = $('#os-body');
-                if (!os.length) {
-                    body.innerHTML = '<p class="muted">Nenhuma OS para esta data.</p>';
-                    return;
-                }
-                body.innerHTML = `<table class="grid">
-                    <thead><tr><th>Hora</th><th>Cliente</th><th>Assunto</th><th>Cidade</th><th>Status</th><th>APR/PT</th></tr></thead>
-                    <tbody>${os.map(rowOs).join('')}</tbody></table>`;
+                osCache = await Api.listOs({ date: $('#os-date').value });
+                fillTecOptions();
+                applyOsFilters();
             } catch (e) {
                 $('#os-body').innerHTML = `<p class="error">${esc(e.message)}</p>`;
             }
@@ -108,7 +109,50 @@
             });
         }
         $('#os-date').addEventListener('change', load);
+        $('#btn-hoje').addEventListener('click', () => { $('#os-date').value = localDate(); load(); });
+        $('#os-search').addEventListener('input', applyOsFilters);
+        $('#os-tec').addEventListener('change', applyOsFilters);
+        $('#os-status').addEventListener('change', applyOsFilters);
         load();
+    }
+
+    function fillTecOptions() {
+        const sel = $('#os-tec');
+        const atual = sel.value;
+        const mapa = new Map();
+        osCache.forEach((o) => {
+            if (o.id_tecnico) mapa.set(String(o.id_tecnico), o.tecnico_nome || ('Técnico ' + o.id_tecnico));
+        });
+        const opts = [...mapa.entries()].sort((a, b) => a[1].localeCompare(b[1]))
+            .map(([id, nome]) => `<option value="${id}">${esc(nome)}</option>`).join('');
+        sel.innerHTML = '<option value="">Todos os técnicos</option>' + opts;
+        sel.value = atual;
+    }
+
+    function applyOsFilters() {
+        const q = ($('#os-search').value || '').toLowerCase();
+        const tec = $('#os-tec').value;
+        const st = $('#os-status').value;
+
+        const rows = osCache.filter((o) => {
+            if (tec && String(o.id_tecnico) !== tec) return false;
+            if (st && o.status_ixc !== st) return false;
+            if (q) {
+                const alvo = [o.cliente, o.tecnico_nome, o.endereco, o.bairro, o.cidade, o.assunto, o.protocolo, o.ixc_id]
+                    .join(' ').toLowerCase();
+                if (!alvo.includes(q)) return false;
+            }
+            return true;
+        });
+
+        const body = $('#os-body');
+        if (!rows.length) {
+            body.innerHTML = '<p class="muted">Nenhuma OS encontrada com esses filtros.</p>';
+            return;
+        }
+        body.innerHTML = `<table class="grid">
+            <thead><tr><th>Hora</th><th>Cliente</th><th>Técnico</th><th>Assunto</th><th>Status</th><th>APR/PT</th></tr></thead>
+            <tbody>${rows.map(rowOs).join('')}</tbody></table>`;
     }
 
     function rowOs(o) {
@@ -116,12 +160,17 @@
         const doc = o.documento ? `<span class="tag tag-${o.documento.status}">${o.documento.status}</span>` : '<span class="muted">—</span>';
         return `<tr>
             <td>${esc(hora)}</td>
-            <td>${esc(o.cliente || '(sem nome)')}<br><small class="muted">#${esc(o.ixc_id)}</small></td>
+            <td>${esc(o.cliente || '(sem nome)')}<br><small class="muted">#${esc(o.ixc_id)} · ${esc(o.cidade || '')}</small></td>
+            <td>${esc(o.tecnico_nome || (o.id_tecnico ? 'Técnico ' + o.id_tecnico : ''))}</td>
             <td>${esc(o.assunto || '')}</td>
-            <td>${esc(o.cidade || '')}</td>
-            <td><span class="tag">${esc(o.status_ixc || '')}</span></td>
+            <td><span class="tag">${esc(OS_STATUS[o.status_ixc] || o.status_ixc || '')}</span></td>
             <td>${doc}</td>
         </tr>`;
+    }
+
+    function localDate() {
+        const d = new Date();
+        return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     }
 
     // ── View: Documentos ────────────────────────────────────
