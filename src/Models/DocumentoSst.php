@@ -28,14 +28,24 @@ class DocumentoSst
             'tecnico_id' => (int)$data['tecnico_id'],
             'nr10' => !empty($data['nr10']) ? 1 : 0,
             'nr35' => !empty($data['nr35']) ? 1 : 0,
+            'normas' => self::json($data['normas'] ?? null),
             'riscos' => self::json($data['riscos'] ?? null),
             'epis' => self::json($data['epis'] ?? null),
+            'epcs' => self::json($data['epcs'] ?? null),
+            'checklist' => self::json($data['checklist'] ?? null),
             'medidas' => self::json($data['medidas'] ?? null),
+            'restricoes' => $data['restricoes'] ?? null,
             'atividades' => $data['atividades'] ?? null,
             'observacoes' => $data['observacoes'] ?? null,
+            'validade_inicio' => self::dt($data['validade_inicio'] ?? null),
+            'validade_fim' => self::dt($data['validade_fim'] ?? null),
         ];
 
         if ($existing) {
+            // Não sobrescreve o documento depois de assinado/encerrado
+            if (in_array($existing['status'], ['liberada', 'em_execucao', 'encerrada'], true)) {
+                return (int)$existing['id'];
+            }
             $sets = [];
             $values = [];
             foreach ($payload as $k => $v) {
@@ -50,9 +60,11 @@ class DocumentoSst
 
         $stmt = $db->prepare(
             'INSERT INTO documentos_sst
-                (uuid, os_id, tecnico_id, status, nr10, nr35, riscos, epis, medidas, atividades, observacoes)
+                (uuid, os_id, tecnico_id, status, nr10, nr35, normas, riscos, epis, epcs, checklist,
+                 medidas, restricoes, atividades, observacoes, validade_inicio, validade_fim)
              VALUES
-                (:uuid, :os_id, :tecnico_id, :status, :nr10, :nr35, :riscos, :epis, :medidas, :atividades, :observacoes)'
+                (:uuid, :os_id, :tecnico_id, :status, :nr10, :nr35, :normas, :riscos, :epis, :epcs, :checklist,
+                 :medidas, :restricoes, :atividades, :observacoes, :validade_inicio, :validade_fim)'
         );
         $stmt->execute([
             ':uuid' => $data['uuid'],
@@ -61,11 +73,17 @@ class DocumentoSst
             ':status' => in_array($data['status'] ?? '', self::STATUSES, true) ? $data['status'] : 'rascunho',
             ':nr10' => $payload['nr10'],
             ':nr35' => $payload['nr35'],
+            ':normas' => $payload['normas'],
             ':riscos' => $payload['riscos'],
             ':epis' => $payload['epis'],
+            ':epcs' => $payload['epcs'],
+            ':checklist' => $payload['checklist'],
             ':medidas' => $payload['medidas'],
+            ':restricoes' => $payload['restricoes'],
             ':atividades' => $payload['atividades'],
             ':observacoes' => $payload['observacoes'],
+            ':validade_inicio' => $payload['validade_inicio'],
+            ':validade_fim' => $payload['validade_fim'],
         ]);
 
         return (int)$db->lastInsertId();
@@ -96,7 +114,7 @@ class DocumentoSst
 
     public static function list(array $filters = [], int $limit = 200, int $offset = 0): array
     {
-        $sql = 'SELECT d.*, os.cliente, os.endereco, os.data_agenda, os.protocolo,
+        $sql = 'SELECT d.*, os.ixc_id, os.cliente, os.endereco, os.data_agenda, os.protocolo,
                        u.name AS tecnico_nome, s.name AS supervisor_nome
                 FROM documentos_sst d
                 INNER JOIN ordens_servico os ON os.id = d.os_id
@@ -147,12 +165,14 @@ class DocumentoSst
         $stmt->execute([$id]);
     }
 
-    public static function marcarEncerrado(int $id): void
+    public static function marcarEncerrado(int $id, ?int $conforme = null, ?string $obs = null): void
     {
         $stmt = Database::getInstance()->prepare(
-            "UPDATE documentos_sst SET status = 'encerrada', encerrado_em = NOW() WHERE id = ?"
+            "UPDATE documentos_sst
+             SET status = 'encerrada', encerrado_em = NOW(), servico_conforme = ?, encerramento_obs = ?
+             WHERE id = ?"
         );
-        $stmt->execute([$id]);
+        $stmt->execute([$conforme, $obs, $id]);
     }
 
     public static function setPdfPath(int $id, string $path): void
@@ -199,5 +219,14 @@ class DocumentoSst
             return json_last_error() === JSON_ERROR_NONE ? $value : json_encode($value, JSON_UNESCAPED_UNICODE);
         }
         return json_encode($value, JSON_UNESCAPED_UNICODE);
+    }
+
+    private static function dt(mixed $value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+        $ts = strtotime((string)$value);
+        return $ts ? date('Y-m-d H:i:s', $ts) : null;
     }
 }

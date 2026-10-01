@@ -8,6 +8,8 @@ const Api = (() => {
     function setSession(token, user) {
         localStorage.setItem(TOKEN_KEY, token);
         localStorage.setItem(USER_KEY, JSON.stringify(user || {}));
+        // Cookie permite abrir PDF/imagens em nova aba ou <img> (que não enviam header Authorization)
+        document.cookie = `${TOKEN_KEY}=${token}; path=/; SameSite=Lax; max-age=43200`;
     }
     function getUser() {
         try { return JSON.parse(localStorage.getItem(USER_KEY) || '{}'); } catch { return {}; }
@@ -15,6 +17,7 @@ const Api = (() => {
     function clear() {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
+        document.cookie = `${TOKEN_KEY}=; path=/; max-age=0`;
     }
 
     async function request(method, path, body) {
@@ -73,6 +76,19 @@ const Api = (() => {
         updateUser: (id, u) => request('PUT', '/users/' + id, u),
         resetUserPassword: (id, password) => request('POST', `/users/${id}/senha`, { password }),
         deleteUser: (id) => request('DELETE', '/users/' + id),
+
+        // Documentos / catálogo
+        catalogo: () => request('GET', '/catalogo'),
+        listDocumentos: (params = {}) => {
+            const qs = new URLSearchParams(params).toString();
+            return request('GET', '/documentos' + (qs ? '?' + qs : ''));
+        },
+        getDocumento: (id) => request('GET', '/documentos/' + id),
+        saveDocumento: (d) => request('POST', '/documentos', d),
+        assinarDocumento: (id, dados) => request('POST', `/documentos/${id}/assinar`, dados),
+        aprovarDocumento: (id, dados) => request('POST', `/documentos/${id}/aprovar`, dados),
+        encerrarDocumento: (id, dados) => request('POST', `/documentos/${id}/encerrar`, dados),
+        getOs: (id) => request('GET', '/os/' + id),
 
         // IXC
         ixcFuncionarios: () => request('GET', '/ixc/funcionarios'),

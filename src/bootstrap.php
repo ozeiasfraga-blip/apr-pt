@@ -26,3 +26,5 @@ require_once __DIR__ . '/Controllers/OrdemServicoController.php';
 require_once __DIR__ . '/Controllers/DocumentoSstController.php';
 require_once __DIR__ . '/Controllers/SyncController.php';
 require_once __DIR__ . '/Controllers/UserController.php';
+require_once __DIR__ . '/Controllers/CatalogoController.php';
+require_once __DIR__ . '/Controllers/ArquivoController.php';

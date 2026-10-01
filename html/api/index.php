@@ -64,6 +64,7 @@ route('POST', '/api/users/{id}/senha', [\App\Controllers\UserController::class, 
 route('DELETE', '/api/users/{id}', [\App\Controllers\UserController::class, 'destroy']);
 
 // ── Documentos APR/PT ───────────────────────────────────────
+route('GET', '/api/catalogo', [\App\Controllers\CatalogoController::class, 'index']);
 route('GET', '/api/documentos', [\App\Controllers\DocumentoSstController::class, 'index']);
 route('POST', '/api/documentos', [\App\Controllers\DocumentoSstController::class, 'store']);
 route('GET', '/api/documentos/{id}', [\App\Controllers\DocumentoSstController::class, 'show']);
@@ -73,6 +74,8 @@ route('POST', '/api/documentos/{id}/encerrar', [\App\Controllers\DocumentoSstCon
 route('GET', '/api/documentos/{id}/pdf', [\App\Controllers\DocumentoSstController::class, 'pdf']);
 
 // ── Healthcheck ─────────────────────────────────────────────
+route('GET', '/api/arquivo', [\App\Controllers\ArquivoController::class, 'show']);
+
 route('GET', '/api/health', function () {
     Response::success([
         'app' => $_ENV['APP_NAME'] ?? 'APR/PT',

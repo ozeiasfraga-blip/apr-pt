@@ -88,11 +88,17 @@ class DocumentoSstController
             'status' => $data['status'] ?? 'rascunho',
             'nr10' => $data['nr10'] ?? false,
             'nr35' => $data['nr35'] ?? false,
+            'normas' => $data['normas'] ?? null,
             'riscos' => $data['riscos'] ?? null,
             'epis' => $data['epis'] ?? null,
+            'epcs' => $data['epcs'] ?? null,
+            'checklist' => $data['checklist'] ?? null,
             'medidas' => $data['medidas'] ?? null,
+            'restricoes' => $data['restricoes'] ?? null,
             'atividades' => $data['atividades'] ?? null,
             'observacoes' => $data['observacoes'] ?? null,
+            'validade_inicio' => $data['validade_inicio'] ?? null,
+            'validade_fim' => $data['validade_fim'] ?? null,
         ]);
 
         $doc = DocumentoSst::getById($id);
@@ -241,7 +247,19 @@ class DocumentoSstController
             Response::error('Somente documentos liberados podem ser encerrados (status: ' . $doc['status'] . ').', 409);
         }
 
-        DocumentoSst::marcarEncerrado((int)$doc['id']);
+        $data = json_decode(file_get_contents('php://input'), true) ?? [];
+        $conforme = isset($data['servico_conforme']) ? (int)(bool)$data['servico_conforme'] : null;
+        $obs = $data['encerramento_obs'] ?? null;
+
+        DocumentoSst::marcarEncerrado((int)$doc['id'], $conforme, $obs);
+
+        // Atualiza o PDF após o encerramento
+        try {
+            $pdfPath = PdfService::gerarDocumento(DocumentoSst::getById((int)$doc['id']));
+            DocumentoSst::setPdfPath((int)$doc['id'], $pdfPath);
+        } catch (\Throwable $e) {
+            error_log('Falha ao gerar PDF no encerramento ' . $doc['id'] . ': ' . $e->getMessage());
+        }
 
         Log::create([
             'user_id' => $authUser->user_id,
