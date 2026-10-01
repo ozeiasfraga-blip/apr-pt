@@ -35,4 +35,31 @@ class SyncController
 
         Response::success($result, "Sincronização concluída ({$result['sincronizadas']} de {$result['total']} OS).");
     }
+
+    /**
+     * GET /api/ixc/funcionarios — lista funcionários do IXC para vincular aos usuários.
+     * Supervisor/admin.
+     */
+    public static function funcionarios(): void
+    {
+        Middleware::requireSupervisor();
+
+        try {
+            $rows = SyncService::funcionarios()['registros'];
+        } catch (Exception $e) {
+            Response::error('Falha ao consultar funcionários no IXC: ' . $e->getMessage(), 502);
+        }
+
+        $lista = array_map(fn($r) => [
+            'id' => (int)$r['id'],
+            'nome' => $r['funcionario'] ?? ('Funcionário ' . $r['id']),
+            'funcao' => $r['id_funcao'] ?? null,
+            'email' => $r['email'] ?? null,
+            'ativo' => $r['ativo'] ?? null,
+        ], $rows);
+
+        usort($lista, fn($a, $b) => strcoll($a['nome'], $b['nome']));
+
+        Response::success($lista);
+    }
 }

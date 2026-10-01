@@ -54,6 +54,14 @@ route('GET', '/api/os/{id}', [\App\Controllers\OrdemServicoController::class, 's
 
 // ── Sincronização com o IXC ─────────────────────────────────
 route('POST', '/api/sync/os', [\App\Controllers\SyncController::class, 'os']);
+route('GET', '/api/ixc/funcionarios', [\App\Controllers\SyncController::class, 'funcionarios']);
+
+// ── Usuários (supervisor/admin vê e gerencia) ───────────────
+route('GET', '/api/users', [\App\Controllers\UserController::class, 'index']);
+route('POST', '/api/users', [\App\Controllers\UserController::class, 'create']);
+route('PUT', '/api/users/{id}', [\App\Controllers\UserController::class, 'update']);
+route('POST', '/api/users/{id}/senha', [\App\Controllers\UserController::class, 'resetPassword']);
+route('DELETE', '/api/users/{id}', [\App\Controllers\UserController::class, 'destroy']);
 
 // ── Documentos APR/PT ───────────────────────────────────────
 route('GET', '/api/documentos', [\App\Controllers\DocumentoSstController::class, 'index']);

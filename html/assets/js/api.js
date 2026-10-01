@@ -4,9 +4,7 @@ const Api = (() => {
     const USER_KEY = 'ap_user';
     const BASE = '/api';
 
-    function getToken() {
-        return localStorage.getItem(TOKEN_KEY);
-    }
+    function getToken() { return localStorage.getItem(TOKEN_KEY); }
     function setSession(token, user) {
         localStorage.setItem(TOKEN_KEY, token);
         localStorage.setItem(USER_KEY, JSON.stringify(user || {}));
@@ -44,6 +42,8 @@ const Api = (() => {
         get: (p) => request('GET', p),
         post: (p, b) => request('POST', p, b),
         put: (p, b) => request('PUT', p, b),
+        del: (p) => request('DELETE', p),
+
         login: async (email, password) => {
             const data = await request('POST', '/auth/login', { email, password });
             setSession(data.access_token, data.user);
@@ -54,9 +54,30 @@ const Api = (() => {
             clear();
         },
         me: () => request('GET', '/auth/me'),
-        getToken,
-        getUser,
-        clear,
+        changePassword: (current_password, new_password) =>
+            request('POST', '/auth/change-password', { current_password, new_password }),
+
+        // Ordens de serviço
+        listOs: (params = {}) => {
+            const qs = new URLSearchParams(params).toString();
+            return request('GET', '/os' + (qs ? '?' + qs : ''));
+        },
+        syncOs: (date) => request('POST', '/sync/os', { date }),
+
+        // Usuários
+        listUsers: (params = {}) => {
+            const qs = new URLSearchParams(params).toString();
+            return request('GET', '/users' + (qs ? '?' + qs : ''));
+        },
+        createUser: (u) => request('POST', '/users', u),
+        updateUser: (id, u) => request('PUT', '/users/' + id, u),
+        resetUserPassword: (id, password) => request('POST', `/users/${id}/senha`, { password }),
+        deleteUser: (id) => request('DELETE', '/users/' + id),
+
+        // IXC
+        ixcFuncionarios: () => request('GET', '/ixc/funcionarios'),
+
+        getToken, getUser, clear,
         isAuthenticated: () => !!getToken(),
     };
 })();
