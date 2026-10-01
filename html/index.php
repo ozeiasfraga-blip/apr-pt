@@ -34,6 +34,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
                 <a href="#os" data-view="os">Ordens de Serviço</a>
                 <a href="#documentos" data-view="documentos">Documentos</a>
                 <a href="#usuarios" data-view="usuarios" data-roles="supervisor,admin">Usuários</a>
+                <a href="#modelo" data-view="modelo" data-roles="supervisor,admin">Modelo APR/PT</a>
             </nav>
             <div class="user-box">
                 <span id="user-info"></span>

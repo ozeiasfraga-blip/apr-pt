@@ -143,6 +143,12 @@ textarea { width: 100%; padding: 9px 10px; border: 1px solid #cbd5e1; border-rad
 .btn-link { background: var(--brand); color: #fff; text-decoration: none; padding: 9px 16px; border-radius: 6px; font-size: 14px; }
 .btn-link:hover { background: var(--brand-2); }
 
+/* Abas */
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.tab { background: #e2e8f0; color: #334155; border-radius: 6px; padding: 8px 14px; font-size: 14px; }
+.tab:hover { background: #cbd5e1; }
+.tab.active { background: var(--brand); color: #fff; }
+
 @media (max-width: 640px) {
     .grid2 { grid-template-columns: 1fr; }
 }

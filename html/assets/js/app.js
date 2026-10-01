@@ -57,6 +57,7 @@
         $$('#nav a').forEach((a) => a.classList.toggle('active', a.dataset.view === view));
 
         if (view === 'usuarios') { if (!isSupervisor()) { location.hash = '#os'; return; } return renderUsuarios(); }
+        if (view === 'modelo') { if (!isSupervisor()) { location.hash = '#os'; return; } return renderModelo(); }
         if (view === 'documentos') return renderDocumentos();
         if (view === 'doc') return renderDocForm(param);
         return renderOs();
@@ -561,6 +562,155 @@
     function keyed(v, k) { const o = {}; toArr(v).forEach((i) => { o[i[k]] = i; }); return o; }
     function toLocalInput(v) { if (!v) return ''; return String(v).replace(' ', 'T').slice(0, 16); }
     function nl2br(v) { return esc(v || '').replace(/\n/g, '<br>'); }
+
+    // ── View: Modelo APR/PT (edição do catálogo) ────────────
+    const MODELO_DEFS = {
+        riscos: {
+            label: 'Riscos',
+            colunas: ['descricao', 'categoria', 'nr', 'ordem', 'ativo'],
+            campos: [
+                { k: 'codigo', l: 'Código', t: 'text' },
+                { k: 'categoria', l: 'Categoria (NR-35 / NR-10 / GERAL)', t: 'text' },
+                { k: 'nr', l: 'Norma', t: 'text' },
+                { k: 'descricao', l: 'Perigo', t: 'text', req: true },
+                { k: 'fonte', l: 'Fonte geradora', t: 'text' },
+                { k: 'consequencia', l: 'Consequência', t: 'text' },
+                { k: 'medidas', l: 'Medidas de controle (sugestão)', t: 'textarea' },
+                { k: 'ordem', l: 'Ordem', t: 'number' },
+                { k: 'ativo', l: 'Ativo', t: 'bool' },
+            ],
+        },
+        epis: {
+            label: 'EPIs',
+            colunas: ['descricao', 'nr', 'ordem', 'ativo'],
+            campos: [
+                { k: 'codigo', l: 'Código', t: 'text' },
+                { k: 'descricao', l: 'Descrição', t: 'text', req: true },
+                { k: 'nr', l: 'Norma (opcional)', t: 'text' },
+                { k: 'ordem', l: 'Ordem', t: 'number' },
+                { k: 'ativo', l: 'Ativo', t: 'bool' },
+            ],
+        },
+        epcs: {
+            label: 'EPCs / Ferramentas',
+            colunas: ['descricao', 'ordem', 'ativo'],
+            campos: [
+                { k: 'codigo', l: 'Código', t: 'text' },
+                { k: 'descricao', l: 'Descrição', t: 'text', req: true },
+                { k: 'ordem', l: 'Ordem', t: 'number' },
+                { k: 'ativo', l: 'Ativo', t: 'bool' },
+            ],
+        },
+        checklist: {
+            label: 'Checklist PT',
+            colunas: ['descricao', 'grupo', 'critico', 'ordem', 'ativo'],
+            campos: [
+                { k: 'codigo', l: 'Código', t: 'text' },
+                { k: 'descricao', l: 'Item', t: 'text', req: true },
+                { k: 'grupo', l: 'Grupo', t: 'text' },
+                { k: 'critico', l: 'Item crítico', t: 'bool' },
+                { k: 'ordem', l: 'Ordem', t: 'number' },
+                { k: 'ativo', l: 'Ativo', t: 'bool' },
+            ],
+        },
+    };
+
+    async function renderModelo() {
+        const c = $('#content');
+        c.innerHTML = '<p class="muted">Carregando…</p>';
+        try { state.modelo = await Api.getModelo(); }
+        catch (e) { c.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
+
+        const abas = ['riscos', 'epis', 'epcs', 'checklist', 'textos'];
+        const labels = { ...Object.fromEntries(Object.entries(MODELO_DEFS).map(([k, v]) => [k, v.label])), textos: 'Textos' };
+        c.innerHTML = `
+            <div class="page-head"><h1>Modelo APR/PT</h1><span class="muted">Catálogo editável usado na tela do técnico</span></div>
+            <div class="tabs">${abas.map((a, i) => `<button class="tab ${i === 0 ? 'active' : ''}" data-tab="${a}">${labels[a]}</button>`).join('')}</div>
+            <div id="modelo-body"></div>`;
+        $$('.tab').forEach((b) => b.addEventListener('click', () => {
+            $$('.tab').forEach((x) => x.classList.toggle('active', x === b));
+            mostrarAba(b.dataset.tab);
+        }));
+        mostrarAba('riscos');
+    }
+
+    function mostrarAba(tipo) {
+        return tipo === 'textos' ? renderTextos() : renderListaModelo(tipo);
+    }
+
+    function renderListaModelo(tipo) {
+        const def = MODELO_DEFS[tipo];
+        const itens = state.modelo.listas[tipo] || [];
+        const th = def.colunas.map((c) => `<th>${esc(campoLabel(def, c))}</th>`).join('');
+        const rows = itens.map((it) => `<tr>${def.colunas.map((c) => `<td>${celula(it[c], c)}</td>`).join('')}
+            <td class="acoes"><button class="link" data-m-ed="${it.id}">Editar</button> <button class="link danger" data-m-del="${it.id}">Excluir</button></td></tr>`).join('');
+        $('#modelo-body').innerHTML = `
+            <div class="toolbar" style="margin-bottom:10px"><button id="m-novo">+ Novo</button></div>
+            <div class="table-wrap"><table class="grid"><thead><tr>${th}<th></th></tr></thead><tbody>${rows || `<tr><td colspan="${def.colunas.length + 1}" class="muted">Nenhum item.</td></tr>`}</tbody></table></div>`;
+        $('#m-novo').addEventListener('click', () => itemForm(tipo, null));
+        $$('[data-m-ed]').forEach((b) => b.addEventListener('click', () => itemForm(tipo, itens.find((x) => x.id === +b.dataset.mEd))));
+        $$('[data-m-del]').forEach((b) => b.addEventListener('click', () => delItem(tipo, +b.dataset.mDel)));
+    }
+
+    function campoLabel(def, k) { const c = def.campos.find((x) => x.k === k); return c ? c.l : k; }
+    function celula(v, c) {
+        if (['ativo', 'critico'].includes(c)) return Number(v) ? 'Sim' : 'Não';
+        return esc(v ?? '');
+    }
+
+    function itemForm(tipo, item) {
+        const def = MODELO_DEFS[tipo];
+        const isEdit = !!item;
+        const campos = def.campos.map((c) => {
+            const v = item ? (item[c.k] ?? '') : (c.t === 'bool' ? 1 : c.k === 'ordem' ? 0 : '');
+            if (c.t === 'bool') return `<label class="inline"><input type="checkbox" name="${c.k}" ${Number(v) ? 'checked' : ''}> ${esc(c.l)}</label>`;
+            if (c.t === 'textarea') return `<label>${esc(c.l)}<textarea name="${c.k}" rows="3">${esc(v)}</textarea></label>`;
+            if (c.t === 'number') return `<label>${esc(c.l)}<input type="number" name="${c.k}" value="${esc(v)}"></label>`;
+            return `<label>${esc(c.l)}<input type="text" name="${c.k}" value="${esc(v)}" ${c.req ? 'required' : ''}></label>`;
+        }).join('');
+        openModal(isEdit ? 'Editar item' : 'Novo item', `
+            <form id="m-form">${campos}
+                <div class="form-actions"><button type="button" class="secondary" id="m-cancel">Cancelar</button><button type="submit">Salvar</button></div>
+            </form>`);
+        $('#m-cancel').addEventListener('click', closeModal);
+        $('#m-form').addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const f = new FormData(ev.target);
+            const payload = {};
+            def.campos.forEach((c) => {
+                payload[c.k] = c.t === 'bool' ? (f.get(c.k) ? 1 : 0) : (c.t === 'number' ? (+f.get(c.k) || 0) : (f.get(c.k) || '').trim());
+            });
+            try {
+                if (isEdit) await Api.updateModelo(tipo, item.id, payload);
+                else await Api.createModelo(tipo, payload);
+                closeModal(); toast('Salvo.'); state.modelo = await Api.getModelo(); renderListaModelo(tipo);
+            } catch (e) { toast(e.message, true); }
+        });
+    }
+
+    async function delItem(tipo, id) {
+        if (!confirm('Remover este item?')) return;
+        try { await Api.deleteModelo(tipo, id); toast('Removido.'); state.modelo = await Api.getModelo(); renderListaModelo(tipo); }
+        catch (e) { toast(e.message, true); }
+    }
+
+    function renderTextos() {
+        const t = state.modelo.textos || [];
+        $('#modelo-body').innerHTML = `
+            <p class="muted">Textos das declarações exibidos e assinados no documento.</p>
+            <form id="txt-form">
+                ${t.map((x) => `<label>${esc(x.descricao || x.chave)}<textarea name="${esc(x.chave)}" rows="4">${esc(x.valor || '')}</textarea></label>`).join('')}
+                <div class="form-actions"><button type="submit">Salvar textos</button></div>
+            </form>`;
+        $('#txt-form').addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const f = new FormData(ev.target);
+            const payload = {};
+            t.forEach((x) => { payload[x.chave] = f.get(x.chave); });
+            try { await Api.saveTextos(payload); toast('Textos salvos.'); state.modelo = await Api.getModelo(); }
+            catch (e) { toast(e.message, true); }
+        });
+    }
 
     // ── Eventos globais ─────────────────────────────────────
     $('#form-login').addEventListener('submit', async (ev) => {

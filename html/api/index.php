@@ -73,6 +73,13 @@ route('POST', '/api/documentos/{id}/aprovar', [\App\Controllers\DocumentoSstCont
 route('POST', '/api/documentos/{id}/encerrar', [\App\Controllers\DocumentoSstController::class, 'encerrar']);
 route('GET', '/api/documentos/{id}/pdf', [\App\Controllers\DocumentoSstController::class, 'pdf']);
 
+// ── Modelo APR/PT (edição do catálogo — supervisor/admin) ───
+route('GET', '/api/modelo', [\App\Controllers\CatalogoAdminController::class, 'index']);
+route('PUT', '/api/modelo/textos', [\App\Controllers\CatalogoAdminController::class, 'saveTextos']);
+route('POST', '/api/modelo/{tipo}', [\App\Controllers\CatalogoAdminController::class, 'create']);
+route('PUT', '/api/modelo/{tipo}/{id}', [\App\Controllers\CatalogoAdminController::class, 'update']);
+route('DELETE', '/api/modelo/{tipo}/{id}', [\App\Controllers\CatalogoAdminController::class, 'destroy']);
+
 // ── Healthcheck ─────────────────────────────────────────────
 route('GET', '/api/arquivo', [\App\Controllers\ArquivoController::class, 'show']);
 

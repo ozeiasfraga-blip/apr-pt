@@ -93,6 +93,13 @@ const Api = (() => {
         // IXC
         ixcFuncionarios: () => request('GET', '/ixc/funcionarios'),
 
+        // Modelo APR/PT (edição)
+        getModelo: () => request('GET', '/modelo'),
+        createModelo: (tipo, d) => request('POST', '/modelo/' + tipo, d),
+        updateModelo: (tipo, id, d) => request('PUT', `/modelo/${tipo}/${id}`, d),
+        deleteModelo: (tipo, id) => request('DELETE', `/modelo/${tipo}/${id}`),
+        saveTextos: (d) => request('PUT', '/modelo/textos', d),
+
         getToken, getUser, clear,
         isAuthenticated: () => !!getToken(),
     };

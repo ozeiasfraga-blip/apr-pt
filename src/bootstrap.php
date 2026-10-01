@@ -28,3 +28,4 @@ require_once __DIR__ . '/Controllers/SyncController.php';
 require_once __DIR__ . '/Controllers/UserController.php';
 require_once __DIR__ . '/Controllers/CatalogoController.php';
 require_once __DIR__ . '/Controllers/ArquivoController.php';
+require_once __DIR__ . '/Controllers/CatalogoAdminController.php';
