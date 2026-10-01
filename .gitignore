@@ -1,0 +1,24 @@
+# Dependências
+/vendor/
+
+# Ambiente
+/.env
+
+# Armazenamento gerado em runtime
+/storage/pdfs/*
+/storage/assinaturas/*
+/storage/anexos/*
+!/storage/pdfs/.gitkeep
+!/storage/assinaturas/.gitkeep
+!/storage/anexos/.gitkeep
+
+# Logs e temporários
+*.log
+.DS_Store
+Thumbs.db
+
+# PWA build (Bubblewrap/TWA)
+/apk/build/
+/apk/*.apk
+/apk/*.aab
+/apk/*.keystore

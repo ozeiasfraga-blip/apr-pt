@@ -1,0 +1,26 @@
+{
+    "name": "APR/PT — Segurança do Trabalho",
+    "short_name": "APR/PT",
+    "description": "Análise Preliminar de Risco e Permissão de Trabalho vinculadas às OS",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#f4f6f8",
+    "theme_color": "#0d3b66",
+    "lang": "pt-BR",
+    "icons": [
+        {
+            "src": "/assets/img/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/assets/img/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
