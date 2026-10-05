@@ -303,14 +303,8 @@
                 <span class="label">Verificações de segurança de campo</span>
                 <div class="checklist">${cat.checklist.map((i) => checkRow(i, chkSel[i.codigo], readOnly)).join('')}</div>
 
-                <div class="grid2">
-                    <label class="field"><span class="label">Restrições / observações</span>
-                        <textarea id="doc-restricoes" rows="2" ${readOnly ? 'disabled' : ''}>${esc(doc?.restricoes || '')}</textarea></label>
-                    <div>
-                        <label class="field"><span class="label">Validade — início</span><input type="datetime-local" id="doc-val-ini" value="${toLocalInput(doc?.validade_inicio)}" ${readOnly ? 'disabled' : ''}></label>
-                        <label class="field"><span class="label">Validade — fim</span><input type="datetime-local" id="doc-val-fim" value="${toLocalInput(doc?.validade_fim)}" ${readOnly ? 'disabled' : ''}></label>
-                    </div>
-                </div>
+                <label class="field"><span class="label">Restrições / observações</span>
+                    <textarea id="doc-restricoes" rows="2" ${readOnly ? 'disabled' : ''}>${esc(doc?.restricoes || '')}</textarea></label>
 
                 <div class="termo"><strong>Declaração do executante.</strong> ${esc(cat.textos.declaracao_tecnico || '')}</div>
                 <div class="grid2">
@@ -458,8 +452,6 @@
             atividades: $('#doc-atividades')?.value.trim() || '',
             observacoes: $('#doc-observacoes')?.value.trim() || '',
             restricoes: $('#doc-restricoes')?.value.trim() || '',
-            validade_inicio: $('#doc-val-ini')?.value || null,
-            validade_fim: $('#doc-val-fim')?.value || null,
         };
     }
 

@@ -92,6 +92,23 @@ class DocumentoSstController
             }
         }
 
+        // Data/hora preenchidas automaticamente pelo sistema
+        if (empty($data['validade_inicio'])) {
+            $data['validade_inicio'] = date('Y-m-d H:i:s');
+        }
+        if (empty($data['validade_fim'])) {
+            $horas = 8;
+            try {
+                $stmt = \App\Database::getInstance()->prepare("SELECT valor FROM config_textos WHERE chave = 'validade_horas'");
+                $stmt->execute();
+                $h = $stmt->fetchColumn();
+                if ($h !== false && $h !== null && $h !== '') {
+                    $horas = (int)$h;
+                }
+            } catch (\Throwable $e) {}
+            $data['validade_fim'] = date('Y-m-d H:i:s', strtotime($data['validade_inicio'] . " +{$horas} hours"));
+        }
+
         $id = DocumentoSst::createOrUpdateByUuid([
             'uuid' => $data['uuid'],
             'os_id' => (int)$data['os_id'],
