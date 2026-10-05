@@ -281,6 +281,7 @@
 
                 <div class="field"><span class="label">Normas aplicáveis</span>
                     <div class="chips">${NORMAS.map((n) => `<label class="chip"><input type="checkbox" class="norma" value="${esc(n)}" ${normasSel.has(n) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(n)}</label>`).join('')}</div>
+                    <small class="muted">Ao marcar uma NR, os riscos, EPIs, EPCs e itens do checklist daquela norma são preenchidos automaticamente.</small>
                 </div>
 
                 <label class="field"><span class="label">Descrição da atividade</span>
@@ -293,10 +294,10 @@
                 </table></div>
 
                 <span class="label">EPIs</span>
-                <div class="checks">${cat.epis.map((x) => `<label class="chip"><input type="checkbox" class="epi" value="${esc(x.descricao)}" ${episSel.has(x.descricao) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(x.descricao)}</label>`).join('')}</div>
+                <div class="checks">${cat.epis.map((x) => `<label class="chip"><input type="checkbox" class="epi" data-nr="${esc(x.nr || '')}" value="${esc(x.descricao)}" ${episSel.has(x.descricao) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(x.descricao)}</label>`).join('')}</div>
 
                 <span class="label">EPC / Ferramentas</span>
-                <div class="checks">${cat.epcs.map((x) => `<label class="chip"><input type="checkbox" class="epc" value="${esc(x.descricao)}" ${epcsSel.has(x.descricao) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(x.descricao)}</label>`).join('')}</div>
+                <div class="checks">${cat.epcs.map((x) => `<label class="chip"><input type="checkbox" class="epc" data-nr="${esc(x.nr || '')}" value="${esc(x.descricao)}" ${epcsSel.has(x.descricao) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(x.descricao)}</label>`).join('')}</div>
 
                 <label class="field"><span class="label">Observações da APR</span>
                     <textarea id="doc-observacoes" rows="2" ${readOnly ? 'disabled' : ''}>${esc(doc?.observacoes || '')}</textarea></label>
@@ -363,6 +364,7 @@
             const tr = ev.target.closest('tr');
             $('.rk-nivel', tr).textContent = nivel($('.rk-sev', tr).value, $('.rk-prob', tr).value);
         }));
+        $$('.norma').forEach((c) => c.addEventListener('change', aplicarNormas));
 
         if (podeEditar) {
             $('#btn-rascunho').addEventListener('click', async () => {
@@ -398,7 +400,7 @@
         const sev = sel?.sev ?? ''; const prob = sel?.prob ?? '';
         const opcoes = (v) => [1, 2, 3, 4, 5].map((n) => `<option value="${n}" ${Number(v) === n ? 'selected' : ''}>${n}</option>`).join('');
         const dis = readOnly ? 'disabled' : '';
-        return `<tr data-codigo="${esc(r.codigo)}" data-perigo="${esc(r.descricao)}" data-nr="${esc(r.nr || '')}">
+        return `<tr data-codigo="${esc(r.codigo)}" data-perigo="${esc(r.descricao)}" data-nr="${esc(r.nr || '')}" data-sev="${esc(r.severidade || '')}" data-prob="${esc(r.probabilidade || '')}">
             <td><label class="inline"><input type="checkbox" class="rk-check" ${checked} ${dis}> ${esc(r.descricao)}</label>${r.fonte ? `<br><small class="muted">${esc(r.fonte)}</small>` : ''}</td>
             <td>${esc(r.nr || '')}</td>
             <td><select class="rk-sev" ${dis}><option value=""></option>${opcoes(sev)}</select></td>
@@ -411,7 +413,45 @@
     function checkRow(i, resposta, readOnly) {
         const dis = readOnly ? 'disabled' : '';
         const r = (v) => `<label class="chip"><input type="radio" name="chk-${esc(i.codigo)}" value="${v}" ${resposta === v ? 'checked' : ''} ${dis}> ${v.toUpperCase()}</label>`;
-        return `<div class="check-item"><div>${esc(i.descricao)}${Number(i.critico) ? ' <span class="req">*</span>' : ''}</div><div class="chips">${r('sim')}${r('nao')}${r('na')}</div></div>`;
+        return `<div class="check-item" data-codigo="${esc(i.codigo)}" data-nr="${esc(i.nr || '')}"><div>${esc(i.descricao)}${Number(i.critico) ? ' <span class="req">*</span>' : ''}</div><div class="chips">${r('sim')}${r('nao')}${r('na')}</div></div>`;
+    }
+
+    // Marca automaticamente riscos/EPIs/EPCs/checklist conforme as NRs selecionadas
+    function aplicarNormas() {
+        const normas = $$('.norma:checked').map((x) => x.value);
+
+        // Riscos (itens com NR definida)
+        $$('tr[data-codigo]').forEach((tr) => {
+            const nr = tr.dataset.nr;
+            const cb = $('.rk-check', tr);
+            if (!nr || !cb || cb.disabled) return;
+            const marcar = normas.includes(nr);
+            cb.checked = marcar;
+            if (marcar) {
+                const sev = $('.rk-sev', tr), prob = $('.rk-prob', tr);
+                if (!sev.value && tr.dataset.sev) sev.value = tr.dataset.sev;
+                if (!prob.value && tr.dataset.prob) prob.value = tr.dataset.prob;
+                $('.rk-nivel', tr).textContent = nivel(sev.value, prob.value);
+            }
+        });
+
+        // EPIs e EPCs
+        $$('.epi, .epc').forEach((cb) => {
+            const nr = cb.dataset.nr;
+            if (!nr || cb.disabled) return;
+            cb.checked = normas.includes(nr);
+        });
+
+        // Checklist
+        $$('.check-item').forEach((el) => {
+            const nr = el.dataset.nr;
+            if (!nr) return;
+            const sim = el.querySelector('input[type=radio][value="sim"]');
+            if (!sim || sim.disabled) return;
+            sim.checked = normas.includes(nr);
+        });
+
+        toast(normas.length ? `Campos de ${normas.join(', ')} marcados automaticamente.` : 'NRs desmarcadas — itens automáticos limpos.');
     }
 
     // ── Assinatura (canvas) ─────────────────────────────────
@@ -700,21 +740,23 @@
         },
         epcs: {
             label: 'EPCs / Ferramentas',
-            colunas: ['descricao', 'ordem', 'ativo'],
+            colunas: ['descricao', 'nr', 'ordem', 'ativo'],
             campos: [
                 { k: 'codigo', l: 'Código', t: 'text' },
                 { k: 'descricao', l: 'Descrição', t: 'text', req: true },
+                { k: 'nr', l: 'Norma (auto-preenchimento)', t: 'text' },
                 { k: 'ordem', l: 'Ordem', t: 'number' },
                 { k: 'ativo', l: 'Ativo', t: 'bool' },
             ],
         },
         checklist: {
             label: 'Checklist PT',
-            colunas: ['descricao', 'grupo', 'critico', 'ordem', 'ativo'],
+            colunas: ['descricao', 'grupo', 'nr', 'critico', 'ordem', 'ativo'],
             campos: [
                 { k: 'codigo', l: 'Código', t: 'text' },
                 { k: 'descricao', l: 'Item', t: 'text', req: true },
                 { k: 'grupo', l: 'Grupo', t: 'text' },
+                { k: 'nr', l: 'Norma (auto-preenchimento)', t: 'text' },
                 { k: 'critico', l: 'Item crítico', t: 'bool' },
                 { k: 'ordem', l: 'Ordem', t: 'number' },
                 { k: 'ativo', l: 'Ativo', t: 'bool' },

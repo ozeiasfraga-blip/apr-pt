@@ -22,12 +22,12 @@ class CatalogoAdminController
         ],
         'epcs' => [
             'tabela' => 'catalogo_epc',
-            'campos' => ['codigo', 'descricao', 'ordem', 'ativo'],
+            'campos' => ['codigo', 'descricao', 'nr', 'ordem', 'ativo'],
             'obrigatorios' => ['descricao'],
         ],
         'checklist' => [
             'tabela' => 'catalogo_checklist',
-            'campos' => ['codigo', 'descricao', 'grupo', 'critico', 'ordem', 'ativo'],
+            'campos' => ['codigo', 'descricao', 'grupo', 'nr', 'critico', 'ordem', 'ativo'],
             'obrigatorios' => ['descricao'],
         ],
     ];
