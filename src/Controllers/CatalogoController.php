@@ -31,6 +31,10 @@ class CatalogoController
             'SELECT codigo, descricao, nr, ordem FROM catalogo_epc WHERE ativo = 1 ORDER BY ordem, id'
         )->fetchAll();
 
+        $ferramentas = $db->query(
+            'SELECT codigo, descricao, ordem FROM catalogo_ferramentas WHERE ativo = 1 ORDER BY ordem, id'
+        )->fetchAll();
+
         $checklist = $db->query(
             'SELECT codigo, descricao, grupo, critico, nr, ordem FROM catalogo_checklist
              WHERE ativo = 1 AND grupo = \'PT\' ORDER BY ordem, id'
@@ -45,6 +49,7 @@ class CatalogoController
             'riscos' => $riscos,
             'epis' => $epis,
             'epcs' => $epcs,
+            'ferramentas' => $ferramentas,
             'checklist' => $checklist,
             'textos' => $textos,
         ]);

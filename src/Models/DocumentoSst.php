@@ -33,9 +33,17 @@ class DocumentoSst
             'epis' => self::json($data['epis'] ?? null),
             'epcs' => self::json($data['epcs'] ?? null),
             'checklist' => self::json($data['checklist'] ?? null),
+            'ferramentas' => self::json($data['ferramentas'] ?? null),
             'medidas' => self::json($data['medidas'] ?? null),
             'restricoes' => $data['restricoes'] ?? null,
+            'treinamento_nr10' => !empty($data['treinamento_nr10']) ? 1 : 0,
+            'treinamento_nr35' => !empty($data['treinamento_nr35']) ? 1 : 0,
+            'aso_apto' => !empty($data['aso_apto']) ? 1 : 0,
             'atividades' => $data['atividades'] ?? null,
+            'local_atividade' => $data['local_atividade'] ?? null,
+            'responsavel_apr' => $data['responsavel_apr'] ?? null,
+            'equipe_envolvida' => $data['equipe_envolvida'] ?? null,
+            'etapas' => $data['etapas'] ?? null,
             'observacoes' => $data['observacoes'] ?? null,
             'validade_inicio' => self::dt($data['validade_inicio'] ?? null),
             'validade_fim' => self::dt($data['validade_fim'] ?? null),
@@ -61,10 +69,14 @@ class DocumentoSst
         $stmt = $db->prepare(
             'INSERT INTO documentos_sst
                 (uuid, os_id, tecnico_id, status, nr10, nr35, normas, riscos, epis, epcs, checklist,
-                 medidas, restricoes, atividades, observacoes, validade_inicio, validade_fim)
+                 ferramentas, medidas, restricoes, treinamento_nr10, treinamento_nr35, aso_apto,
+                 atividades, local_atividade, responsavel_apr, equipe_envolvida, etapas, observacoes,
+                 validade_inicio, validade_fim)
              VALUES
                 (:uuid, :os_id, :tecnico_id, :status, :nr10, :nr35, :normas, :riscos, :epis, :epcs, :checklist,
-                 :medidas, :restricoes, :atividades, :observacoes, :validade_inicio, :validade_fim)'
+                 :ferramentas, :medidas, :restricoes, :treinamento_nr10, :treinamento_nr35, :aso_apto,
+                 :atividades, :local_atividade, :responsavel_apr, :equipe_envolvida, :etapas, :observacoes,
+                 :validade_inicio, :validade_fim)'
         );
         $stmt->execute([
             ':uuid' => $data['uuid'],
@@ -78,9 +90,17 @@ class DocumentoSst
             ':epis' => $payload['epis'],
             ':epcs' => $payload['epcs'],
             ':checklist' => $payload['checklist'],
+            ':ferramentas' => $payload['ferramentas'],
             ':medidas' => $payload['medidas'],
             ':restricoes' => $payload['restricoes'],
+            ':treinamento_nr10' => $payload['treinamento_nr10'],
+            ':treinamento_nr35' => $payload['treinamento_nr35'],
+            ':aso_apto' => $payload['aso_apto'],
             ':atividades' => $payload['atividades'],
+            ':local_atividade' => $payload['local_atividade'],
+            ':responsavel_apr' => $payload['responsavel_apr'],
+            ':equipe_envolvida' => $payload['equipe_envolvida'],
+            ':etapas' => $payload['etapas'],
             ':observacoes' => $payload['observacoes'],
             ':validade_inicio' => $payload['validade_inicio'],
             ':validade_fim' => $payload['validade_fim'],

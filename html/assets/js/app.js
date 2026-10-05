@@ -253,6 +253,14 @@
         const chkSel = {};
         toArr(doc?.checklist).forEach((i) => { chkSel[i.codigo || i.descricao] = i.resposta; });
         const normasSel = new Set(toArr(doc?.normas).length ? toArr(doc?.normas) : [doc?.nr35 ? 'NR-35' : null, doc?.nr10 ? 'NR-10' : null].filter(Boolean));
+        const ferrSel = new Set(toArr(doc?.ferramentas));
+        const gruposRiscos = [];
+        cat.riscos.forEach((r) => {
+            const nome = r.categoria || 'OUTROS';
+            let g = gruposRiscos.find((x) => x.nome === nome);
+            if (!g) { g = { nome, itens: [] }; gruposRiscos.push(g); }
+            g.itens.push(r);
+        });
 
         c.innerHTML = `
             <div class="page-head">
@@ -266,51 +274,67 @@
 
             <section class="panel">
                 <h2>1. Identificação</h2>
+                <div class="empresa">
+                    <strong>${esc(cat.textos.empresa_razao || '')}</strong>
+                    <small>CNPJ: ${esc(cat.textos.empresa_cnpj || '')}</small>
+                    <small>${esc(cat.textos.empresa_endereco || '')}</small>
+                </div>
                 <div class="grid2">
                     <div><span class="label">Cliente</span><div>${esc(os.cliente || '')}</div></div>
-                    <div><span class="label">Protocolo</span><div>${esc(os.protocolo || '')}</div></div>
-                    <div><span class="label">Endereço</span><div>${esc([os.endereco, os.bairro, os.cidade].filter(Boolean).join(' '))}</div></div>
+                    <div><span class="label">Protocolo / OS</span><div>#${esc(os.ixc_id)} ${esc(os.protocolo || '')}</div></div>
                     <div><span class="label">Atividade</span><div>${esc(os.assunto || '')}</div></div>
-                    <div><span class="label">Técnico</span><div>${esc(os.tecnico_nome || '')}</div></div>
-                    <div><span class="label">Data agenda</span><div>${esc(os.data_agenda || '')}</div></div>
+                    <div><span class="label">Data</span><div>${fmtData(doc?.validade_inicio || new Date().toISOString().slice(0, 10))}</div></div>
+                    <label class="field"><span class="label">Local da Atividade</span>
+                        <input type="text" id="doc-local" value="${esc(doc?.local_atividade || [os.endereco, os.bairro, os.cidade].filter(Boolean).join(', '))}" ${readOnly ? 'disabled' : ''}></label>
+                    <label class="field"><span class="label">Responsável pela APR</span>
+                        <input type="text" id="doc-responsavel" value="${esc(doc?.responsavel_apr || state.user.name || '')}" ${readOnly ? 'disabled' : ''}></label>
                 </div>
+                <label class="field"><span class="label">Equipe Envolvida (nomes)</span>
+                    <textarea id="doc-equipe" rows="2" ${readOnly ? 'disabled' : ''}>${esc(doc?.equipe_envolvida || '')}</textarea></label>
             </section>
 
             <section class="panel">
-                <h2>2. APR — Análise Preliminar de Risco</h2>
+                <h2>2. Análise Preliminar de Risco (APR)</h2>
 
                 <div class="field"><span class="label">Normas aplicáveis</span>
                     <div class="chips">${NORMAS.map((n) => `<label class="chip"><input type="checkbox" class="norma" value="${esc(n)}" ${normasSel.has(n) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(n)}</label>`).join('')}</div>
-                    <small class="muted">Ao marcar uma NR, os riscos, EPIs, EPCs e itens do checklist daquela norma são preenchidos automaticamente.</small>
+                    <small class="muted">Ao marcar uma NR, as ferramentas, EPIs/EPCs e riscos correspondentes são marcados automaticamente.</small>
                 </div>
 
-                <label class="field"><span class="label">Descrição da atividade</span>
-                    <textarea id="doc-atividades" rows="2" ${readOnly ? 'disabled' : ''}>${esc(doc?.atividades || '')}</textarea></label>
+                <span class="label">Ferramentas Utilizadas</span>
+                <div class="checks">${cat.ferramentas.map((x) => `<label class="chip"><input type="checkbox" class="ferramenta" value="${esc(x.descricao)}" ${ferrSel.has(x.descricao) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(x.descricao)}</label>`).join('')}</div>
 
-                <span class="label">Riscos identificados</span>
-                <div class="table-wrap"><table class="grid compact">
-                    <thead><tr><th style="width:44%">Perigo</th><th>NR</th><th>Sev.</th><th>Prob.</th><th>Nível</th><th>Medidas de controle</th></tr></thead>
-                    <tbody>${cat.riscos.map((r) => riscoRow(r, riscosSel[r.codigo], readOnly)).join('')}</tbody>
-                </table></div>
-
-                <span class="label">EPIs</span>
+                <span class="label">EPIs e EPCs Obrigatórios</span>
                 <div class="checks">${cat.epis.map((x) => `<label class="chip"><input type="checkbox" class="epi" data-nr="${esc(x.nr || '')}" value="${esc(x.descricao)}" ${episSel.has(x.descricao) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(x.descricao)}</label>`).join('')}</div>
 
-                <span class="label">EPC / Ferramentas</span>
-                <div class="checks">${cat.epcs.map((x) => `<label class="chip"><input type="checkbox" class="epc" data-nr="${esc(x.nr || '')}" value="${esc(x.descricao)}" ${epcsSel.has(x.descricao) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(x.descricao)}</label>`).join('')}</div>
+                <div class="field"><span class="label">Riscos, impactos e medidas de controle</span>
+                    <small class="muted">Marque apenas os riscos correspondentes à atividade que será executada.</small>
+                    ${gruposRiscos.map((g) => `
+                        <div class="grupo-risco">${esc(g.nome)}</div>
+                        <div class="table-wrap"><table class="grid compact">
+                            <thead><tr><th style="width:38%">Risco</th><th>Sev.</th><th>Prob.</th><th>Nível</th><th>Medidas de controle</th></tr></thead>
+                            <tbody>${g.itens.map((r) => riscoRow(r, riscosSel[r.codigo], readOnly)).join('')}</tbody>
+                        </table></div>`).join('')}
+                </div>
 
-                <label class="field"><span class="label">Observações da APR</span>
+                <div class="termo"><strong>Autorização formal de trabalho.</strong> O empregado está formalmente autorizado a trabalhar pela empresa em atividades envolvendo riscos com eletricidade, conforme exigido pelo item 10.8.4 da NR-10, bem como apto para trabalhos em altura nos termos da NR-35.</div>
+                <div class="field"><span class="label">Validade dos treinamentos / habilitação</span>
+                    <div class="chips">
+                        <label class="chip"><input type="checkbox" id="trn-nr10" ${doc && Number(doc.treinamento_nr10) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> Treinamento NR-10 válido</label>
+                        <label class="chip"><input type="checkbox" id="trn-nr35" ${doc && Number(doc.treinamento_nr35) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> Treinamento NR-35 válido</label>
+                        <label class="chip"><input type="checkbox" id="trn-aso" ${doc && Number(doc.aso_apto) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ASO apto (altura/elétrica)</label>
+                    </div>
+                </div>
+
+                <label class="field"><span class="label">Outras observações / riscos adicionais não mapeados</span>
                     <textarea id="doc-observacoes" rows="2" ${readOnly ? 'disabled' : ''}>${esc(doc?.observacoes || '')}</textarea></label>
 
-                <span class="label">Verificações de segurança de campo</span>
-                <div class="checklist">${cat.checklist.map((i) => checkRow(i, chkSel[i.codigo], readOnly)).join('')}</div>
+                <label class="field"><span class="label">Etapas da atividade</span>
+                    <textarea id="doc-etapas" rows="3" ${readOnly ? 'disabled' : ''}>${esc(doc?.etapas || '')}</textarea></label>
 
-                <label class="field"><span class="label">Restrições / observações</span>
-                    <textarea id="doc-restricoes" rows="2" ${readOnly ? 'disabled' : ''}>${esc(doc?.restricoes || '')}</textarea></label>
-
-                <div class="termo"><strong>Declaração do executante.</strong> ${esc(cat.textos.declaracao_tecnico || '')}</div>
+                <div class="termo"><strong>Termo de Ciência e Compromisso.</strong> ${esc(cat.textos.termo_ciencia || '')}</div>
                 <div class="grid2">
-                    <div><span class="label">Assinatura do executante</span><div>${sigImg('tecnico')}</div></div>
+                    <div><span class="label">Assinatura do Responsável pela APR</span><div>${sigImg('tecnico')}</div></div>
                     <div><span class="label">Data da assinatura</span><div>${fmtData(sigs['tecnico']?.assinado_em)}</div></div>
                 </div>
             </section>
@@ -397,16 +421,17 @@
 
     function riscoRow(r, sel, readOnly) {
         const checked = sel ? 'checked' : '';
-        const sev = sel?.sev ?? ''; const prob = sel?.prob ?? '';
+        const sev = sel?.sev ?? '';
+        const prob = sel?.prob ?? '';
+        const medidas = sel?.medidas ?? r.medidas ?? '';
         const opcoes = (v) => [1, 2, 3, 4, 5].map((n) => `<option value="${n}" ${Number(v) === n ? 'selected' : ''}>${n}</option>`).join('');
         const dis = readOnly ? 'disabled' : '';
-        return `<tr data-codigo="${esc(r.codigo)}" data-perigo="${esc(r.descricao)}" data-nr="${esc(r.nr || '')}" data-sev="${esc(r.severidade || '')}" data-prob="${esc(r.probabilidade || '')}">
-            <td><label class="inline"><input type="checkbox" class="rk-check" ${checked} ${dis}> ${esc(r.descricao)}</label>${r.fonte ? `<br><small class="muted">${esc(r.fonte)}</small>` : ''}</td>
-            <td>${esc(r.nr || '')}</td>
+        return `<tr data-codigo="${esc(r.codigo)}" data-perigo="${esc(r.descricao)}" data-nr="${esc(r.nr || '')}" data-categoria="${esc(r.categoria || '')}" data-medida="${esc(r.medidas || '')}" data-sev="${esc(r.severidade || '')}" data-prob="${esc(r.probabilidade || '')}">
+            <td><label class="inline"><input type="checkbox" class="rk-check" ${checked} ${dis}> ${esc(r.descricao)}</label></td>
             <td><select class="rk-sev" ${dis}><option value=""></option>${opcoes(sev)}</select></td>
             <td><select class="rk-prob" ${dis}><option value=""></option>${opcoes(prob)}</select></td>
             <td class="rk-nivel">${nivel(sev, prob)}</td>
-            <td><input class="rk-medidas" value="${esc(sel?.medidas || '')}" ${dis}></td>
+            <td><input class="rk-medidas" value="${esc(medidas)}" ${dis}></td>
         </tr>`;
     }
 
@@ -432,6 +457,8 @@
                 if (!sev.value && tr.dataset.sev) sev.value = tr.dataset.sev;
                 if (!prob.value && tr.dataset.prob) prob.value = tr.dataset.prob;
                 $('.rk-nivel', tr).textContent = nivel(sev.value, prob.value);
+                const med = $('.rk-medidas', tr);
+                if (med && !med.value && tr.dataset.medida) med.value = tr.dataset.medida;
             }
         });
 
@@ -473,7 +500,7 @@
     // Coleta os dados do formulário
     function coletar(os, doc) {
         const riscos = $$('tr[data-codigo]').filter((tr) => $('.rk-check', tr).checked).map((tr) => ({
-            codigo: tr.dataset.codigo, perigo: tr.dataset.perigo, nr: tr.dataset.nr,
+            codigo: tr.dataset.codigo, perigo: tr.dataset.perigo, nr: tr.dataset.nr, categoria: tr.dataset.categoria,
             sev: +$('.rk-sev', tr).value || null, prob: +$('.rk-prob', tr).value || null,
             nivel: nivel($('.rk-sev', tr).value, $('.rk-prob', tr).value),
             medidas: $('.rk-medidas', tr).value.trim(),
@@ -491,9 +518,15 @@
             tecnico_id: os.tecnico_user_id || null,
             nr35: normas.includes('NR-35'), nr10: normas.includes('NR-10'),
             normas, riscos, epis, epcs, checklist,
-            atividades: $('#doc-atividades')?.value.trim() || '',
+            ferramentas: $$('.ferramenta:checked').map((x) => x.value),
+            local_atividade: $('#doc-local')?.value.trim() || '',
+            responsavel_apr: $('#doc-responsavel')?.value.trim() || '',
+            equipe_envolvida: $('#doc-equipe')?.value.trim() || '',
+            etapas: $('#doc-etapas')?.value.trim() || '',
+            treinamento_nr10: $('#trn-nr10')?.checked ? 1 : 0,
+            treinamento_nr35: $('#trn-nr35')?.checked ? 1 : 0,
+            aso_apto: $('#trn-aso')?.checked ? 1 : 0,
             observacoes: $('#doc-observacoes')?.value.trim() || '',
-            restricoes: $('#doc-restricoes')?.value.trim() || '',
         };
     }
 

@@ -48,7 +48,6 @@ class PdfService
 
         $status = strtoupper($e($doc['status']));
 
-        // Assinaturas por tipo
         $porTipo = [];
         foreach ($assinaturas as $a) {
             $porTipo[$a['tipo']] = $a;
@@ -60,26 +59,6 @@ class PdfService
             return '<img src="data:image/png;base64,' . base64_encode(file_get_contents($p)) . '" style="height:58px;">';
         };
 
-        // Riscos
-        $riscos = $j($doc['riscos'] ?? null);
-        $riscosHtml = '<em>Não informado</em>';
-        if ($riscos) {
-            $linhas = '';
-            foreach ($riscos as $r) {
-                $sev = (int)($r['sev'] ?? 0);
-                $prob = (int)($r['prob'] ?? 0);
-                $nivel = $r['nivel'] ?? self::nivel($sev, $prob);
-                $linhas .= '<tr>'
-                    . '<td>' . $e($r['perigo'] ?? $r['descricao'] ?? '') . '</td>'
-                    . '<td>' . $e($r['nr'] ?? '') . '</td>'
-                    . '<td style="text-align:center">' . ($sev ?: '-') . '</td>'
-                    . '<td style="text-align:center">' . ($prob ?: '-') . '</td>'
-                    . '<td style="text-align:center">' . $e($nivel) . '</td>'
-                    . '<td>' . $e($r['medidas'] ?? '') . '</td></tr>';
-            }
-            $riscosHtml = '<table class="tbl"><thead><tr><th>Perigo</th><th>NR</th><th>Sev.</th><th>Prob.</th><th>Nível</th><th>Medidas de controle</th></tr></thead><tbody>' . $linhas . '</tbody></table>';
-        }
-
         $lista = function ($v) use ($e) {
             $arr = is_string($v) ? json_decode($v, true) : $v;
             if (!is_array($arr) || empty($arr)) return '<em>Não informado</em>';
@@ -88,105 +67,145 @@ class PdfService
                 $txt = is_array($i) ? ($i['descricao'] ?? $i['valor'] ?? json_encode($i, JSON_UNESCAPED_UNICODE)) : $i;
                 $out .= '<li>' . $e($txt) . '</li>';
             }
-            return '<ul>' . $out . '</ul>';
+            return '<ul class="chk">' . $out . '</ul>';
         };
 
-        // Checklist PT
-        $checklist = $j($doc['checklist'] ?? null);
-        $checkHtml = '<em>Não informado</em>';
-        if ($checklist) {
-            $checkHtml = '<table class="tbl"><thead><tr><th>Item</th><th style="width:80px">Resposta</th></tr></thead><tbody>';
-            foreach ($checklist as $c) {
-                $checkHtml .= '<tr><td>' . $e($c['descricao'] ?? $c['codigo'] ?? '') . '</td><td style="text-align:center">' . strtoupper($e($c['resposta'] ?? '')) . '</td></tr>';
+        // Riscos agrupados por categoria
+        $riscos = $j($doc['riscos'] ?? null);
+        $grupos = [];
+        foreach ($riscos as $r) {
+            $cat = $r['categoria'] ?? 'RISCOS';
+            $grupos[$cat][] = $r;
+        }
+        $riscosHtml = '<em>Não informado</em>';
+        if ($grupos) {
+            $riscosHtml = '';
+            foreach ($grupos as $cat => $itens) {
+                $linhas = '';
+                foreach ($itens as $r) {
+                    $sev = (int)($r['sev'] ?? 0);
+                    $prob = (int)($r['prob'] ?? 0);
+                    $nivel = $r['nivel'] ?? self::nivel($sev, $prob);
+                    $linhas .= '<tr><td>' . $e($r['perigo'] ?? $r['descricao'] ?? '') . '</td>'
+                        . '<td style="text-align:center;width:38px">' . ($sev ?: '-') . '</td>'
+                        . '<td style="text-align:center;width:38px">' . ($prob ?: '-') . '</td>'
+                        . '<td style="text-align:center;width:60px">' . $e($nivel) . '</td>'
+                        . '<td>' . $e($r['medidas'] ?? '') . '</td></tr>';
+                }
+                $riscosHtml .= '<div class="grupo">' . $e($cat) . '</div>'
+                    . '<table class="tbl"><thead><tr><th>Risco</th><th>Sev.</th><th>Prob.</th><th>Nível</th><th>Medidas de controle</th></tr></thead><tbody>' . $linhas . '</tbody></table>';
             }
-            $checkHtml .= '</tbody></table>';
         }
 
         $normas = $j($doc['normas'] ?? null);
-        $normasTxt = $normas ? implode(' · ', array_map($e, $normas)) : '' ;
+        $normasTxt = $normas ? implode(' · ', array_map($e, $normas)) : '';
 
-        $textoLiberacao = self::texto('autorizacao_supervisor',
-            'Eu, na condição de Supervisor / Emissor Autorizado da PT, declaro que analisei a APR anexada, conferi as condições de segurança elétrica do circuito e autorizo o início dos trabalhos.');
-        $textoEncerramento = self::texto('declaracao_encerramento',
-            'Declaro que os trabalhos foram concluídos ou paralisados e a equipe e ferramentas foram retiradas da zona de risco.');
+        $empresaRazao = self::texto('empresa_razao', '');
+        $empresaCnpj = self::texto('empresa_cnpj', '');
+        $empresaEnd = self::texto('empresa_endereco', '');
+        $termoCiencia = self::texto('termo_ciencia', '');
+        $textoLiberacao = self::texto('autorizacao_supervisor', '');
+        $textoEncerramento = self::texto('declaracao_encerramento', '');
 
         $aut = strtoupper((string)($doc['pt_autorizacao'] ?? ''));
         $chk = fn(bool $on) => $on ? '&#9745;' : '&#9744;';
-        $autAutorizada = $aut === 'AUTORIZADA';
-        $autNegada = $aut === 'NAO_AUTORIZADA';
-
         $enc = strtoupper((string)($doc['pt_encerramento_status'] ?? ''));
-        $encConcluido = $enc === 'CONCLUIDO';
-        $encSuspenso = $enc === 'SUSPENSO';
 
         $sigLiber = $porTipo['supervisor'] ?? null;
         $sigEnc = $porTipo['supervisor_encerramento'] ?? null;
         $sigTec = $porTipo['tecnico'] ?? null;
 
+        $chkNr = function ($v) { return $v ? '&#9745;' : '&#9744;'; };
+
         return '<html><head><meta charset="utf-8"><style>
             body { font-family: "DejaVu Sans", sans-serif; font-size: 11px; color: #1a1a1a; }
-            h1 { font-size: 16px; margin: 0 0 2px; }
+            h1 { font-size: 15px; margin: 0 0 2px; }
             h2 { font-size: 12px; background: #eef2f7; padding: 6px 8px; margin: 16px 0 8px; border-left: 3px solid #0d3b66; }
-            .tbl { width: 100%; border-collapse: collapse; }
+            .tbl { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
             .tbl th, .tbl td { border: 1px solid #ccc; padding: 4px 6px; vertical-align: top; text-align: left; }
             .tbl th { background: #f3f4f6; font-size: 10px; }
             .dados td { padding: 3px 6px; vertical-align: top; }
             .label { color: #555; }
             .badge { display: inline-block; padding: 2px 8px; border: 1px solid #999; border-radius: 3px; font-size: 10px; }
             .box { border: 1px solid #94a3b8; border-radius: 6px; padding: 10px 12px; margin-top: 8px; }
-            .termo { margin: 0 0 10px; }
+            .grupo { font-weight: bold; background: #f3f4f6; padding: 3px 6px; margin-top: 6px; font-size: 10px; }
             .doth { border-bottom: 1px solid #333; display: inline-block; min-width: 240px; }
-            .linha { margin: 8px 0; }
+            ul.chk { margin: 3px 0 6px 16px; padding: 0; }
+            ul.chk li { margin: 0; }
             small { color: #666; }
         </style></head><body>
-            <h1>APR / PT — Análise Preliminar de Risco e Permissão de Trabalho</h1>
-            <div class="badge">Status: ' . $status . '</div>
+            <h1>Análise Preliminar de Risco (APR) e Permissão de Trabalho</h1>
+            <div>' . $e($empresaRazao) . '</div>
+            <div style="font-size:10px;color:#666;">CNPJ: ' . $e($empresaCnpj) . ' — ' . $e($empresaEnd) . '</div>
+            <div class="badge" style="margin-top:4px;">Status: ' . $status . '</div>
             <div style="font-size:10px;color:#777;">Documento: ' . $e($doc['uuid']) . '</div>
 
             <h2>1. Identificação</h2>
             <table class="dados">
-                <tr><td class="label">OS (IXC)</td><td>' . $e($os['ixc_id'] ?? '') . '</td>
-                    <td class="label">Protocolo</td><td>' . $e($os['protocolo'] ?? '') . '</td></tr>
                 <tr><td class="label">Cliente</td><td>' . $e($os['cliente'] ?? '') . '</td>
-                    <td class="label">Data agenda</td><td>' . $e($os['data_agenda'] ?? '') . '</td></tr>
-                <tr><td class="label">Endereço</td><td colspan="3">' . $e(trim(($os['endereco'] ?? '') . ' ' . ($os['bairro'] ?? '') . ' ' . ($os['cidade'] ?? ''))) . '</td></tr>
-                <tr><td class="label">Atividade</td><td colspan="3">' . $e($os['assunto'] ?? '') . '</td></tr>
+                    <td class="label">OS / Protocolo</td><td>#' . $e($os['ixc_id'] ?? '') . ' ' . $e($os['protocolo'] ?? '') . '</td></tr>
+                <tr><td class="label">Atividade</td><td>' . $e($os['assunto'] ?? '') . '</td>
+                    <td class="label">Data</td><td>' . $data($doc['validade_inicio'] ?? null) . '</td></tr>
+                <tr><td class="label">Local da Atividade</td><td colspan="3">' . $e($doc['local_atividade'] ?? trim(($os['endereco'] ?? '') . ' ' . ($os['bairro'] ?? '') . ' ' . ($os['cidade'] ?? ''))) . '</td></tr>
+                <tr><td class="label">Responsável pela APR</td><td>' . $e($doc['responsavel_apr'] ?? '') . '</td>
+                    <td class="label">Equipe Envolvida</td><td>' . $e($doc['equipe_envolvida'] ?? '') . '</td></tr>
             </table>
 
-            <h2>2. APR — Análise Preliminar de Risco</h2>
-            <div><span class="label">Normas:</span> ' . $e($normasTxt) . '</div>
-            <div class="linha"><span class="label">Descrição da atividade:</span><br>' . nl2br($e($doc['atividades'] ?? '')) . '</div>
-            <div><strong>Riscos identificados</strong></div>' . $riscosHtml . '
-            <div class="linha"><strong>EPIs</strong></div>' . $lista($doc['epis'] ?? null) . '
-            <div class="linha"><strong>EPC / Ferramentas</strong></div>' . $lista($doc['epcs'] ?? null) . '
-            <div class="linha"><span class="label">Observações:</span> ' . nl2br($e($doc['observacoes'] ?? '')) . '</div>
-            <div class="linha"><strong>Assinatura do executante (APR):</strong> ' . ($imgTag($sigTec) ?: '-') .
-                ($sigTec ? ' <small>' . $e($sigTec['user_nome']) . ' — ' . $data($sigTec['assinado_em']) . '</small>' : '') . '</div>
+            <h2>2. Análise Preliminar de Risco (APR)</h2>
+            <div><span class="label">Normas aplicáveis:</span> ' . $e($normasTxt) . '</div>
+
+            <div style="margin-top:8px;"><strong>Ferramentas Utilizadas</strong></div>' . $lista($doc['ferramentas'] ?? null) . '
+            <div style="margin-top:4px;"><strong>EPIs e EPCs Obrigatórios</strong></div>' . $lista($doc['epis'] ?? null) . '
+
+            <div style="margin-top:8px;"><strong>Riscos, impactos e medidas de controle</strong></div>' . $riscosHtml . '
+
+            <div class="box" style="margin-top:10px;">
+                <strong>Autorização formal de trabalho.</strong> O empregado está formalmente autorizado a trabalhar pela empresa
+                em atividades envolvendo riscos com eletricidade, conforme exigido pelo item 10.8.4 da NR-10, bem como apto
+                para trabalhos em altura nos termos da NR-35.
+                <div style="margin-top:6px;">Validade dos treinamentos / habilitação: &nbsp; '
+                    . $chkNr(!empty($doc['treinamento_nr10'])) . ' Treinamento NR-10 válido &nbsp;&nbsp; '
+                    . $chkNr(!empty($doc['treinamento_nr35'])) . ' Treinamento NR-35 válido &nbsp;&nbsp; '
+                    . $chkNr(!empty($doc['aso_apto'])) . ' ASO apto (altura/elétrica)</div>
+            </div>
+
+            <div style="margin-top:8px;"><strong>Outras observações / riscos adicionais não mapeados</strong><br>' . nl2br($e($doc['observacoes'] ?? '')) . '</div>
+            <div style="margin-top:8px;"><strong>Etapas da atividade</strong><br>' . nl2br($e($doc['etapas'] ?? '')) . '</div>
+
+            <div class="box" style="margin-top:10px;">
+                <strong>Termo de Ciência e Compromisso.</strong> ' . $e($termoCiencia) . '
+            </div>
+
+            <table style="width:100%;margin-top:14px"><tr>
+                <td style="width:60%">Assinatura do Responsável pela APR:<br>' . ($imgTag($sigTec) ?: '____________________') .
+                    ($sigTec ? ' <small>' . $e($sigTec['user_nome']) . '</small>' : '') . '</td>
+                <td>Data:<br>' . $data($sigTec['assinado_em'] ?? null) . '</td>
+            </tr></table>
 
             <h2>3. PT — PERMISSÃO PARA TRABALHO</h2>
             <div class="box">
-                <div class="termo">' . $e($textoLiberacao) . '</div>
-                <div class="linha">Status da Permissão: &nbsp;&nbsp; ' . $chk($autAutorizada) . ' <strong>AUTORIZADA</strong>
-                    &nbsp;&nbsp;&nbsp; ' . $chk($autNegada) . ' <strong style="color:#b91c1c">NÃO AUTORIZADA</strong></div>
-                <table style="width:100%"><tr>
+                <div>' . $e($textoLiberacao) . '</div>
+                <div style="margin-top:6px;">Status da Permissão: &nbsp; ' . $chk($aut === 'AUTORIZADA') . ' <strong>AUTORIZADA</strong> &nbsp;&nbsp; '
+                    . $chk($aut === 'NAO_AUTORIZADA') . ' <strong style="color:#b91c1c">NÃO AUTORIZADA</strong></div>
+                <table style="width:100%;margin-top:8px"><tr>
                     <td style="width:60%">Nome do Supervisor / Emissor:<br><span class="doth">' . $e($doc['pt_supervisor_nome'] ?? '') . '</span></td>
                     <td>Registro / Cargo:<br><span class="doth">' . $e($doc['pt_supervisor_registro'] ?? '') . '</span></td>
                 </tr></table>
-                <table style="width:100%;margin-top:10px"><tr>
+                <table style="width:100%;margin-top:8px"><tr>
                     <td style="width:60%">Assinatura do Supervisor:<br>' . ($imgTag($sigLiber) ?: '____________________') . '</td>
-                    <td>Data da Assinatura:<br>' . ($sigLiber ? $data($sigLiber['assinado_em']) : '____/____/______') . '</td>
+                    <td>Data:<br>' . $data($sigLiber['assinado_em'] ?? null) . '</td>
                 </tr></table>
             </div>
 
             <h2>4. ENCERRAMENTO DA PT</h2>
             <div class="box">
-                <div class="termo">' . $e($textoEncerramento) . '</div>
-                <div class="linha">Status do Encerramento: &nbsp;&nbsp; ' . $chk($encConcluido) . ' <strong>Concluído com sucesso</strong>
-                    &nbsp;&nbsp;&nbsp; ' . $chk($encSuspenso) . ' <strong style="color:#b45309">Serviço suspenso / PT cancelada</strong></div>
-                <div class="linha"><span class="label">Observações:</span> ' . nl2br($e($doc['encerramento_obs'] ?? '')) . '</div>
-                <table style="width:100%"><tr>
+                <div>' . $e($textoEncerramento) . '</div>
+                <div style="margin-top:6px;">Status do Encerramento: &nbsp; ' . $chk($enc === 'CONCLUIDO') . ' <strong>Concluído com sucesso</strong> &nbsp;&nbsp; '
+                    . $chk($enc === 'SUSPENSO') . ' <strong style="color:#b45309">Serviço suspenso / PT cancelada</strong></div>
+                <div style="margin-top:6px;"><span class="label">Observações:</span> ' . nl2br($e($doc['encerramento_obs'] ?? '')) . '</div>
+                <table style="width:100%;margin-top:8px"><tr>
                     <td style="width:60%">Assinatura do Supervisor no Encerramento:<br>' . ($imgTag($sigEnc) ?: '____________________') . '</td>
-                    <td>Data do Encerramento:<br>' . ($doc['encerrado_em'] ? $data($doc['encerrado_em']) : '____/____/______') . '</td>
+                    <td>Data:<br>' . $data($doc['encerrado_em'] ?? null) . '</td>
                 </tr></table>
             </div>
         </body></html>';
