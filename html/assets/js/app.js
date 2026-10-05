@@ -295,8 +295,6 @@
                     <label class="field"><span class="label">Responsável pela APR</span>
                         <input type="text" id="doc-responsavel" value="${esc(doc?.responsavel_apr || state.user.name || '')}" ${readOnly ? 'disabled' : ''}></label>
                 </div>
-                <label class="field"><span class="label">Equipe Envolvida (nomes)</span>
-                    <textarea id="doc-equipe" rows="2" ${readOnly ? 'disabled' : ''}>${esc(doc?.equipe_envolvida || '')}</textarea></label>
             </section>
 
             <section class="panel">
@@ -579,7 +577,6 @@
             ferramentas: $$('.ferramenta:checked').map((x) => x.value),
             local_atividade: $('#doc-local')?.value.trim() || '',
             responsavel_apr: $('#doc-responsavel')?.value.trim() || '',
-            equipe_envolvida: $('#doc-equipe')?.value.trim() || '',
             etapas: $('#doc-etapas')?.value.trim() || '',
             treinamento_nr10: $('#trn-nr10')?.checked ? 1 : 0,
             treinamento_nr35: $('#trn-nr35')?.checked ? 1 : 0,

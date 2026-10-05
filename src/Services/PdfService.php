@@ -79,6 +79,12 @@ class PdfService
             $equipeHtml = '<table class="tbl"><thead><tr><th>Nº</th><th>Nome do Colaborador</th><th>Função / Cargo</th><th>CPF / Matrícula</th><th>Assinatura</th></tr></thead><tbody>' . $rowsEq . '</tbody></table>';
         }
 
+        // Nomes da equipe para a linha "Equipe Envolvida" (usa o campo; senão, os integrantes)
+        $equipeNomes = (string)($doc['equipe_envolvida'] ?? '');
+        if ($equipeNomes === '' && $equipe) {
+            $equipeNomes = implode(', ', array_filter(array_map(fn($m) => $m['nome'] ?? '', $equipe)));
+        }
+
         $lista = function ($v) use ($e) {
             $arr = is_string($v) ? json_decode($v, true) : $v;
             if (!is_array($arr) || empty($arr)) return '<em>Não informado</em>';
@@ -168,7 +174,7 @@ class PdfService
                     <td class="label">Data</td><td>' . $data($doc['validade_inicio'] ?? null) . '</td></tr>
                 <tr><td class="label">Local da Atividade</td><td colspan="3">' . $e($doc['local_atividade'] ?? trim(($os['endereco'] ?? '') . ' ' . ($os['bairro'] ?? '') . ' ' . ($os['cidade'] ?? ''))) . '</td></tr>
                 <tr><td class="label">Responsável pela APR</td><td>' . $e($doc['responsavel_apr'] ?? '') . '</td>
-                    <td class="label">Equipe Envolvida</td><td>' . $e($doc['equipe_envolvida'] ?? '') . '</td></tr>
+                    <td class="label">Equipe Envolvida</td><td>' . $e($equipeNomes) . '</td></tr>
             </table>
 
             <h2>2. Análise Preliminar de Risco (APR)</h2>
