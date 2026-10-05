@@ -174,8 +174,7 @@ class DocumentoSst
         return $stmt->fetchAll();
     }
 
-    /** Contagem de documentos por status (opcionalmente de um técnico). */
-    public static function contarPorStatus(?int $tecnicoId = null): array
+    /** Contagem de documentos por status (opcionalmente de um técnico). */    public static function contarPorStatus(?int $tecnicoId = null): array
     {
         $sql = 'SELECT status, COUNT(*) AS qtd FROM documentos_sst';
         $params = [];
@@ -237,6 +236,30 @@ class DocumentoSst
     {
         $stmt = Database::getInstance()->prepare('UPDATE documentos_sst SET pdf_path = ? WHERE id = ?');
         $stmt->execute([$path, $id]);
+    }
+
+    public static function limparEquipe(int $docId): void
+    {
+        $stmt = Database::getInstance()->prepare('DELETE FROM documento_equipe WHERE documento_id = ?');
+        $stmt->execute([$docId]);
+    }
+
+    public static function addEquipe(int $docId, int $ordem, ?string $nome, ?string $funcao, ?string $cpf, ?string $assinaturaPath): void
+    {
+        $stmt = Database::getInstance()->prepare(
+            'INSERT INTO documento_equipe (documento_id, ordem, nome, funcao, cpf, assinatura_path, assinado_em)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([$docId, $ordem, $nome, $funcao, $cpf, $assinaturaPath, $assinaturaPath ? date('Y-m-d H:i:s') : null]);
+    }
+
+    public static function listarEquipe(int $docId): array
+    {
+        $stmt = Database::getInstance()->prepare(
+            'SELECT * FROM documento_equipe WHERE documento_id = ? ORDER BY ordem, id'
+        );
+        $stmt->execute([$docId]);
+        return $stmt->fetchAll();
     }
 
     public static function setHash(int $id, string $hash): void

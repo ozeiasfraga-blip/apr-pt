@@ -65,6 +65,7 @@
 
     // ── View: Ordens de Serviço ─────────────────────────────
     let osCache = [];
+    let docEquipe = [];
     async function renderOs() {
         const c = $('#content');
         c.innerHTML = `
@@ -261,6 +262,11 @@
             if (!g) { g = { nome, itens: [] }; gruposRiscos.push(g); }
             g.itens.push(r);
         });
+        docEquipe = toArr(doc?.equipe).map((m) => ({
+            nome: m.nome || '', funcao: m.funcao || '', cpf: m.cpf || '',
+            assinatura_base64: null, assinatura_path: m.assinatura_path || null,
+            assinado: !!m.assinatura_path,
+        }));
 
         c.innerHTML = `
             <div class="page-head">
@@ -333,6 +339,19 @@
                     <textarea id="doc-etapas" rows="3" ${readOnly ? 'disabled' : ''}>${esc(doc?.etapas || '')}</textarea></label>
 
                 <div class="termo"><strong>Termo de Ciência e Compromisso.</strong> ${esc(cat.textos.termo_ciencia || '')}</div>
+
+                <div class="field">
+                    <span class="label">Registro e Assinatura da Equipe Envolvida</span>
+                    <div class="toolbar" style="margin-bottom:6px">
+                        <label class="inline">Nº de integrantes:
+                            <input type="number" id="eq-qtd" min="0" max="20" value="${docEquipe.length}" ${readOnly ? 'disabled' : ''} style="width:80px"></label>
+                    </div>
+                    <div class="table-wrap"><table class="grid compact">
+                        <thead><tr><th style="width:36px">Nº</th><th>Nome</th><th>Função / Cargo</th><th>CPF / Matrícula</th><th style="width:130px">Assinatura</th></tr></thead>
+                        <tbody id="eq-body"></tbody>
+                    </table></div>
+                </div>
+
                 <div class="grid2">
                     <div><span class="label">Assinatura do Responsável pela APR</span><div>${sigImg('tecnico')}</div></div>
                     <div><span class="label">Data da assinatura</span><div>${fmtData(sigs['tecnico']?.assinado_em)}</div></div>
@@ -389,6 +408,45 @@
             $('.rk-nivel', tr).textContent = nivel($('.rk-sev', tr).value, $('.rk-prob', tr).value);
         }));
         $$('.norma').forEach((c) => c.addEventListener('change', aplicarNormas));
+
+        // Equipe envolvida — assinatura por integrante
+        function eqAssinCell(m, i) {
+            if (m.assinado || m.assinatura_path) {
+                const src = m.assinatura_base64 || (m.assinatura_path ? '/api/arquivo?p=' + encodeURIComponent(m.assinatura_path) : '');
+                return `<img src="${src}" style="height:34px"> ${readOnly ? '' : '<button type="button" class="link eq-sign">reassinar</button>'}`;
+            }
+            return readOnly ? '<span class="muted">—</span>' : '<button type="button" class="link eq-sign">Assinar</button>';
+        }
+        function renderEquipeRows() {
+            const tbody = $('#eq-body'); if (!tbody) return;
+            if (!docEquipe.length) { tbody.innerHTML = '<tr><td colspan="5" class="muted">Informe o nº de integrantes acima.</td></tr>'; return; }
+            tbody.innerHTML = docEquipe.map((m, i) => `<tr>
+                <td>${String(i + 1).padStart(2, '0')}</td>
+                <td><input class="eq-nome" value="${esc(m.nome)}" ${readOnly ? 'disabled' : ''}></td>
+                <td><input class="eq-funcao" value="${esc(m.funcao)}" ${readOnly ? 'disabled' : ''}></td>
+                <td><input class="eq-cpf" value="${esc(m.cpf)}" ${readOnly ? 'disabled' : ''}></td>
+                <td>${eqAssinCell(m, i)}</td></tr>`).join('');
+            $$('#eq-body tr').forEach((tr, i) => {
+                const set = (sel, k) => { const el = $(sel, tr); if (el) el.addEventListener('input', () => { if (docEquipe[i]) docEquipe[i][k] = el.value; }); };
+                set('.eq-nome', 'nome'); set('.eq-funcao', 'funcao'); set('.eq-cpf', 'cpf');
+                const btn = $('.eq-sign', tr);
+                if (btn) btn.addEventListener('click', async () => {
+                    const sig = await askSignature('Assinatura — ' + ((docEquipe[i] && docEquipe[i].nome) || ('Integrante ' + (i + 1))));
+                    if (!sig) return;
+                    docEquipe[i].assinatura_base64 = sig;
+                    docEquipe[i].assinatura_path = null;
+                    docEquipe[i].assinado = true;
+                    renderEquipeRows();
+                });
+            });
+        }
+        if ($('#eq-qtd')) $('#eq-qtd').addEventListener('change', (e) => {
+            const n = Math.max(0, Math.min(20, +e.target.value || 0));
+            while (docEquipe.length < n) docEquipe.push({ nome: '', funcao: '', cpf: '', assinatura_path: null, assinado: false });
+            docEquipe.length = n;
+            renderEquipeRows();
+        });
+        renderEquipeRows();
 
         if (podeEditar) {
             $('#btn-rascunho').addEventListener('click', async () => {
@@ -527,6 +585,11 @@
             treinamento_nr35: $('#trn-nr35')?.checked ? 1 : 0,
             aso_apto: $('#trn-aso')?.checked ? 1 : 0,
             observacoes: $('#doc-observacoes')?.value.trim() || '',
+            equipe: docEquipe.map((m) => ({
+                nome: (m.nome || '').trim(), funcao: (m.funcao || '').trim(), cpf: (m.cpf || '').trim(),
+                assinatura_base64: m.assinatura_base64 || null,
+                assinatura_path: m.assinatura_path || null,
+            })),
         };
     }
 

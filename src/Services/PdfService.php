@@ -59,6 +59,26 @@ class PdfService
             return '<img src="data:image/png;base64,' . base64_encode(file_get_contents($p)) . '" style="height:58px;">';
         };
 
+        $equipe = [];
+        try {
+            $st = Database::getInstance()->prepare('SELECT * FROM documento_equipe WHERE documento_id = ? ORDER BY ordem, id');
+            $st->execute([(int)$doc['id']]);
+            $equipe = $st->fetchAll();
+        } catch (\Throwable $e) {}
+
+        $equipeHtml = '<em>Não informado</em>';
+        if ($equipe) {
+            $rowsEq = '';
+            foreach ($equipe as $i => $m) {
+                $rowsEq .= '<tr><td style="text-align:center;width:30px">' . str_pad((string)($i + 1), 2, '0', STR_PAD_LEFT) . '</td>'
+                    . '<td>' . $e($m['nome'] ?? '') . '</td>'
+                    . '<td>' . $e($m['funcao'] ?? '') . '</td>'
+                    . '<td>' . $e($m['cpf'] ?? '') . '</td>'
+                    . '<td>' . ($imgTag(['imagem_path' => $m['assinatura_path'] ?? null]) ?: '') . '</td></tr>';
+            }
+            $equipeHtml = '<table class="tbl"><thead><tr><th>Nº</th><th>Nome do Colaborador</th><th>Função / Cargo</th><th>CPF / Matrícula</th><th>Assinatura</th></tr></thead><tbody>' . $rowsEq . '</tbody></table>';
+        }
+
         $lista = function ($v) use ($e) {
             $arr = is_string($v) ? json_decode($v, true) : $v;
             if (!is_array($arr) || empty($arr)) return '<em>Não informado</em>';
@@ -175,6 +195,8 @@ class PdfService
             <div class="box" style="margin-top:10px;">
                 <strong>Termo de Ciência e Compromisso.</strong> ' . $e($termoCiencia) . '
             </div>
+
+            <div style="margin-top:10px;"><strong>Registro e Assinatura da Equipe Envolvida</strong></div>' . $equipeHtml . '
 
             <table style="width:100%;margin-top:14px"><tr>
                 <td style="width:60%">Assinatura do Responsável pela APR:<br>' . ($imgTag($sigTec) ?: '____________________') .

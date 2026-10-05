@@ -146,6 +146,20 @@ class DocumentoSstController
         $hash = DocumentoSst::calcularHash($doc);
         DocumentoSst::setHash($id, $hash);
 
+        // Equipe envolvida (registro e assinatura individual) — só enquanto editável
+        if ($doc['status'] === 'rascunho' && isset($data['equipe']) && is_array($data['equipe'])) {
+            DocumentoSst::limparEquipe($id);
+            foreach (array_values($data['equipe']) as $i => $m) {
+                $path = null;
+                if (!empty($m['assinatura_base64'])) {
+                    $path = StorageService::saveBase64Image($m['assinatura_base64'], 'assinaturas', 'eq' . $id . '_' . ($i + 1));
+                } elseif (!empty($m['assinatura_path'])) {
+                    $path = $m['assinatura_path'];
+                }
+                DocumentoSst::addEquipe($id, $i + 1, $m['nome'] ?? null, $m['funcao'] ?? null, $m['cpf'] ?? null, $path);
+            }
+        }
+
         Log::create([
             'user_id' => $authUser->user_id,
             'acao' => 'documento_salvar',

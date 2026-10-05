@@ -64,6 +64,7 @@ class OrdemServicoController
         $doc = DocumentoSst::getByOsId((int)$os['id']);
         if ($doc) {
             $doc['assinaturas'] = \App\Models\Assinatura::listByDocumento((int)$doc['id']);
+            $doc['equipe'] = DocumentoSst::listarEquipe((int)$doc['id']);
         }
         $os['documento'] = $doc;
 
