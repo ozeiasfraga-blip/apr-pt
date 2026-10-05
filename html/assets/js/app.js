@@ -421,8 +421,8 @@
 
     function riscoRow(r, sel, readOnly) {
         const checked = sel ? 'checked' : '';
-        const sev = sel?.sev ?? '';
-        const prob = sel?.prob ?? '';
+        const sev = sel?.sev ?? 1;
+        const prob = sel?.prob ?? 1;
         const medidas = sel?.medidas ?? r.medidas ?? '';
         const opcoes = (v) => [1, 2, 3, 4, 5].map((n) => `<option value="${n}" ${Number(v) === n ? 'selected' : ''}>${n}</option>`).join('');
         const dis = readOnly ? 'disabled' : '';
