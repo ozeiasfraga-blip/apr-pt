@@ -90,42 +90,45 @@ Texto livre.
 
 ---
 
-## 3. PT — Permissão de Trabalho
+## 3. PT — PERMISSÃO PARA TRABALHO
 
-### 3.1 Checklist de liberação (antes de iniciar)
+> Emitida e assinada pelo **Supervisor / Emissor Autorizado da PT**. Refere-se à APR acima (anexa).
+
+### 3.1 Declaração de liberação
+> Eu, na condição de Supervisor / Emissor Autorizado da PT, declaro que analisei a APR anexada,
+> conferi as condições de segurança elétrica do circuito e autorizo o início dos trabalhos.
+
+### 3.2 Status da Permissão
+☐ **AUTORIZADA** &nbsp;&nbsp; ☐ **NÃO AUTORIZADA**
+
+### 3.3 Identificação do emissor
+- **Nome do Supervisor / Emissor**
+- **Registro / Cargo**
+
+### 3.4 Assinatura
+- **Assinatura do supervisor** + **Data e Hora da Assinatura**
+
+---
+
+## 4. ENCERRAMENTO DA PT
+
+> Assinado pelo **supervisor**.
+
+### 4.1 Declaração de encerramento
+> Declaro que os trabalhos foram concluídos ou paralisados e a equipe e ferramentas foram
+> retiradas da zona de risco.
+
+### 4.2 Status do Encerramento
+☐ **Concluído com sucesso** &nbsp;&nbsp; ☐ **Serviço suspenso / PT cancelada**
+
+### 4.3 Assinatura
+- **Assinatura do Supervisor no Encerramento** + **Data e Hora do Encerramento**
+
+---
+
+## 5. Verificações de segurança (APR — executante)
+
 Cada item: **Sim / Não / N/A**. Ver catálogo padrão abaixo.
-
-### 3.2 Restrições / observações
-Texto livre (condições especiais, restrições do local).
-
-### 3.3 Validade
-Início e fim (padrão: validade no mesmo dia).
-
-### 3.4 Declaração do executante (técnico)
-> Declaro, na qualidade de executante, que li e compreendi a Análise Preliminar de Risco (APR),
-> que participei da avaliação dos riscos e que executarei o trabalho observando todas as medidas
-> de controle e utilizando os EPIs indicados. Assumo a responsabilidade pelo cumprimento das
-> normas NR-10 e NR-35 aplicáveis.
-
-→ **Assinatura do técnico** + data/hora + geo (opcional).
-
-### 3.5 Autorização do supervisor
-> Autorizo a execução do trabalho nas condições descritas nesta Permissão de Trabalho, desde que
-> mantidas as medidas de controle e a validade indicada. Esta autorização é válida somente para a
-> OS e o período registrados.
-
-→ **Assinatura do supervisor** + data/hora. (Pode ser no local, no aparelho do técnico, ou remoto.)
-
----
-
-## 4. Encerramento
-
-- Data/hora de conclusão
-- Serviço executado conforme previsto? (Sim / Não)
-- Ocorrências / observações finais
-- **Assinatura do técnico**
-
----
 
 ## Catálogos padrão (editáveis)
 

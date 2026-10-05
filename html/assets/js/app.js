@@ -239,8 +239,12 @@
         const ehDono = state.user.role === 'tecnico' && Number(state.user.ixc_funcionario_id) === Number(os.id_tecnico);
         const podeEditar = (!doc || status === 'rascunho') && (ehDono || state.user.role === 'admin');
         const podeLiberar = isSupervisor() && status === 'aguardando_aprovacao';
-        const podeEncerrar = (ehDono || state.user.role === 'admin') && ['liberada', 'em_execucao'].includes(status);
+        const podeEncerrar = isSupervisor() && ['liberada', 'em_execucao'].includes(status);
         const readOnly = !podeEditar;
+        const sigs = {}; toArr(doc?.assinaturas).forEach((a) => { sigs[a.tipo] = a; });
+        const sigImg = (t) => (sigs[t]?.imagem_path ? `<img src="/api/arquivo?p=${encodeURIComponent(sigs[t].imagem_path)}" style="height:58px">` : '<span class="muted">—</span>');
+        const autPT = doc?.pt_autorizacao || '';
+        const encPT = doc?.pt_encerramento_status || '';
 
         const riscosSel = keyed(doc?.riscos, 'codigo');
         const episSel = new Set(toArr(doc?.epis));
@@ -295,40 +299,68 @@
 
                 <label class="field"><span class="label">Observações da APR</span>
                     <textarea id="doc-observacoes" rows="2" ${readOnly ? 'disabled' : ''}>${esc(doc?.observacoes || '')}</textarea></label>
+
+                <span class="label">Verificações de segurança de campo</span>
+                <div class="checklist">${cat.checklist.map((i) => checkRow(i, chkSel[i.codigo], readOnly)).join('')}</div>
+
+                <div class="grid2">
+                    <label class="field"><span class="label">Restrições / observações</span>
+                        <textarea id="doc-restricoes" rows="2" ${readOnly ? 'disabled' : ''}>${esc(doc?.restricoes || '')}</textarea></label>
+                    <div>
+                        <label class="field"><span class="label">Validade — início</span><input type="datetime-local" id="doc-val-ini" value="${toLocalInput(doc?.validade_inicio)}" ${readOnly ? 'disabled' : ''}></label>
+                        <label class="field"><span class="label">Validade — fim</span><input type="datetime-local" id="doc-val-fim" value="${toLocalInput(doc?.validade_fim)}" ${readOnly ? 'disabled' : ''}></label>
+                    </div>
+                </div>
+
+                <div class="termo"><strong>Declaração do executante.</strong> ${esc(cat.textos.declaracao_tecnico || '')}</div>
+                <div class="grid2">
+                    <div><span class="label">Assinatura do executante</span><div>${sigImg('tecnico')}</div></div>
+                    <div><span class="label">Assinado em</span><div>${esc(sigs['tecnico']?.assinado_em || '—')}</div></div>
+                </div>
             </section>
 
             <section class="panel">
-                <h2>3. PT — Permissão de Trabalho</h2>
-                <span class="label">Checklist de liberação</span>
-                <div class="checklist">
-                    ${cat.checklist.map((i) => checkRow(i, chkSel[i.codigo], readOnly)).join('')}
+                <h2>3. PT — PERMISSÃO PARA TRABALHO</h2>
+                <div class="termo">${esc(cat.textos.autorizacao_supervisor || '')}</div>
+                <div class="pt-status">
+                    <span class="label">Status da Permissão</span>
+                    <div class="chips">
+                        <label class="chip"><input type="radio" disabled ${autPT === 'AUTORIZADA' ? 'checked' : ''}> <strong>AUTORIZADA</strong></label>
+                        <label class="chip"><input type="radio" disabled ${autPT === 'NAO_AUTORIZADA' ? 'checked' : ''}> <strong style="color:var(--danger)">NÃO AUTORIZADA</strong></label>
+                    </div>
                 </div>
-                <label class="field"><span class="label">Restrições / observações</span>
-                    <textarea id="doc-restricoes" rows="2" ${readOnly ? 'disabled' : ''}>${esc(doc?.restricoes || '')}</textarea></label>
                 <div class="grid2">
-                    <label class="field"><span class="label">Validade — início</span><input type="datetime-local" id="doc-val-ini" value="${toLocalInput(doc?.validade_inicio)}" ${readOnly ? 'disabled' : ''}></label>
-                    <label class="field"><span class="label">Validade — fim</span><input type="datetime-local" id="doc-val-fim" value="${toLocalInput(doc?.validade_fim)}" ${readOnly ? 'disabled' : ''}></label>
+                    <div><span class="label">Nome do Supervisor / Emissor</span><div>${esc(doc?.pt_supervisor_nome || '—')}</div></div>
+                    <div><span class="label">Registro / Cargo</span><div>${esc(doc?.pt_supervisor_registro || '—')}</div></div>
                 </div>
-                <div class="termo"><strong>Declaração do executante.</strong> ${esc(cat.textos.declaracao_tecnico || '')}</div>
-                <div class="termo"><strong>Autorização do supervisor.</strong> ${esc(cat.textos.autorizacao_supervisor || '')}</div>
+                <div class="grid2">
+                    <div><span class="label">Assinatura do Supervisor</span><div>${sigImg('supervisor')}</div></div>
+                    <div><span class="label">Data e Hora da Assinatura</span><div>${esc(sigs['supervisor']?.assinado_em || '—')}</div></div>
+                </div>
             </section>
 
-            ${assinaturasBlock(doc)}
-
-            ${doc && doc.status === 'encerrada' ? `
-            <section class="panel"><h2>5. Encerramento</h2>
-                <div class="grid2">
-                    <div><span class="label">Concluído em</span><div>${esc(doc.encerrado_em || '')}</div></div>
-                    <div><span class="label">Serviço conforme</span><div>${doc.servico_conforme === null ? '—' : (Number(doc.servico_conforme) ? 'Sim' : 'Não')}</div></div>
+            <section class="panel">
+                <h2>4. ENCERRAMENTO DA PT</h2>
+                <div class="termo">${esc(cat.textos.declaracao_encerramento || '')}</div>
+                <div class="pt-status">
+                    <span class="label">Status do Encerramento</span>
+                    <div class="chips">
+                        <label class="chip"><input type="radio" disabled ${encPT === 'CONCLUIDO' ? 'checked' : ''}> Concluído com sucesso</label>
+                        <label class="chip"><input type="radio" disabled ${encPT === 'SUSPENSO' ? 'checked' : ''}> Serviço suspenso / PT cancelada</label>
+                    </div>
                 </div>
-                <div>${nl2br(doc.encerramento_obs)}</div>
-            </section>` : ''}
+                <div class="field"><span class="label">Observações do encerramento</span><div>${nl2br(doc?.encerramento_obs || '—')}</div></div>
+                <div class="grid2">
+                    <div><span class="label">Assinatura do Supervisor no Encerramento</span><div>${sigImg('supervisor_encerramento')}</div></div>
+                    <div><span class="label">Data e Hora do Encerramento</span><div>${esc(doc?.encerrado_em || '—')}</div></div>
+                </div>
+            </section>
 
             <div class="sticky-actions">
                 ${podeEditar ? '<button class="secondary" id="btn-rascunho">Salvar rascunho</button>' : ''}
                 ${podeEditar ? '<button id="btn-assinar">Assinar e enviar para aprovação</button>' : ''}
                 ${podeLiberar ? '<button id="btn-liberar">Autorizar PT (assinar)</button>' : ''}
-                ${podeEncerrar ? '<button id="btn-encerrar">Encerrar documento</button>' : ''}
+                ${podeEncerrar ? '<button id="btn-encerrar">Assinar encerramento da PT</button>' : ''}
             </div>`;
 
         $('#doc-voltar').addEventListener('click', () => { location.hash = isSupervisor() ? '#documentos' : '#os'; });
@@ -359,12 +391,7 @@
             });
         }
         if (podeLiberar) {
-            $('#btn-liberar').addEventListener('click', async () => {
-                const sig = await askSignature('Assinatura do supervisor');
-                if (!sig) return;
-                try { await Api.aprovarDocumento(doc.id, { imagem_base64: sig, dispositivo: navigator.userAgent }); toast('PT liberada.'); render(); }
-                catch (e) { toast(e.message, true); }
-            });
+            $('#btn-liberar').addEventListener('click', () => liberarModal(doc));
         }
         if (podeEncerrar) {
             $('#btn-encerrar').addEventListener('click', () => encerrarModal(doc));
@@ -392,14 +419,20 @@
         return `<div class="check-item"><div>${esc(i.descricao)}${Number(i.critico) ? ' <span class="req">*</span>' : ''}</div><div class="chips">${r('sim')}${r('nao')}${r('na')}</div></div>`;
     }
 
-    function assinaturasBlock(doc) {
-        const ass = toArr(doc?.assinaturas);
-        if (!ass.length) return '';
-        return `<section class="panel"><h2>4. Assinaturas</h2>${ass.map((a) => `
-            <div class="assinatura">
-                ${a.imagem_path ? `<img src="/api/arquivo?p=${encodeURIComponent(a.imagem_path)}" alt="assinatura">` : ''}
-                <div><strong>${esc(a.user_nome)}</strong> — ${a.tipo === 'tecnico' ? 'Técnico executante' : 'Supervisor'}<br><small class="muted">Assinado em ${esc(a.assinado_em)}</small></div>
-            </div>`).join('')}</section>`;
+    // ── Assinatura (canvas) ─────────────────────────────────
+    function setupSignaturePad(canvas) {
+        const ctx = canvas.getContext('2d');
+        let desenhou = false, draw = false;
+        const fill = () => { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); };
+        fill();
+        ctx.strokeStyle = '#111'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+        const pos = (e) => { const r = canvas.getBoundingClientRect(); const t = e.touches ? e.touches[0] : e; return { x: (t.clientX - r.left) * (canvas.width / r.width), y: (t.clientY - r.top) * (canvas.height / r.height) }; };
+        const start = (e) => { draw = true; desenhou = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
+        const move = (e) => { if (!draw) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+        const end = () => { draw = false; };
+        canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+        canvas.addEventListener('touchstart', start, { passive: false }); canvas.addEventListener('touchmove', move, { passive: false }); canvas.addEventListener('touchend', end);
+        return { clear: () => { fill(); desenhou = false; }, get desenhou() { return desenhou; }, dataURL: () => canvas.toDataURL('image/png') };
     }
 
     // Coleta os dados do formulário
@@ -451,23 +484,68 @@
         } catch (e) { toast(e.message, true); return null; }
     }
 
-    function encerrarModal(doc) {
-        openModal('Encerrar documento', `
-            <form id="enc-form">
-                <label class="inline"><input type="checkbox" name="servico_conforme" checked> Serviço executado conforme previsto</label>
-                <label>Ocorrências / observações<textarea name="encerramento_obs" rows="3"></textarea></label>
-                <div class="form-actions">
-                    <button type="button" class="secondary" id="enc-cancel">Cancelar</button>
-                    <button type="submit">Encerrar</button>
-                </div>
-            </form>`);
-        $('#enc-cancel').addEventListener('click', closeModal);
-        $('#enc-form').addEventListener('submit', async (ev) => {
-            ev.preventDefault();
-            const f = new FormData(ev.target);
+    function liberarModal(doc) {
+        openModal('Autorizar PT — Supervisor / Emissor', `
+            <p class="muted">${esc(state.catalogo?.textos?.autorizacao_supervisor || '')}</p>
+            <span class="label">Status da Permissão</span>
+            <label class="inline"><input type="radio" name="pt_aut" value="AUTORIZADA" checked> <strong>AUTORIZADA</strong></label>
+            <label class="inline"><input type="radio" name="pt_aut" value="NAO_AUTORIZADA"> <strong style="color:var(--danger)">NÃO AUTORIZADA</strong></label>
+            <label>Nome do Supervisor / Emissor<input type="text" id="lib-nome" value="${esc(state.user.name || '')}"></label>
+            <label>Registro / Cargo<input type="text" id="lib-reg" placeholder="Ex.: Supervisor de Campo / CREA"></label>
+            <span class="label">Assinatura do supervisor</span>
+            <canvas id="lib-sig" class="sig-canvas" width="480" height="200"></canvas>
+            <div class="form-actions">
+                <button type="button" class="secondary" id="lib-cancel">Cancelar</button>
+                <button type="button" id="lib-ok">Assinar e liberar</button>
+            </div>`);
+        const pad = setupSignaturePad($('#lib-sig'));
+        $('#lib-cancel').addEventListener('click', closeModal);
+        $('#lib-ok').addEventListener('click', async () => {
+            const aut = document.querySelector('input[name=pt_aut]:checked')?.value || 'AUTORIZADA';
+            if (!pad.desenhou) { toast('Assine antes de confirmar.', true); return; }
             try {
-                await Api.encerrarDocumento(doc.id, { servico_conforme: f.get('servico_conforme') ? 1 : 0, encerramento_obs: f.get('encerramento_obs') });
-                closeModal(); toast('Documento encerrado.'); render();
+                await Api.aprovarDocumento(doc.id, {
+                    pt_autorizacao: aut,
+                    pt_supervisor_nome: $('#lib-nome').value.trim(),
+                    pt_supervisor_registro: $('#lib-reg').value.trim(),
+                    imagem_base64: pad.dataURL(),
+                    dispositivo: navigator.userAgent,
+                });
+                closeModal();
+                toast(aut === 'AUTORIZADA' ? 'PT autorizada.' : 'PT NÃO autorizada.');
+                render();
+            } catch (e) { toast(e.message, true); }
+        });
+    }
+
+    function encerrarModal(doc) {
+        openModal('Encerramento da PT — Supervisor', `
+            <p class="muted">${esc(state.catalogo?.textos?.declaracao_encerramento || '')}</p>
+            <span class="label">Status do Encerramento</span>
+            <label class="inline"><input type="radio" name="pt_enc" value="CONCLUIDO" checked> Concluído com sucesso</label>
+            <label class="inline"><input type="radio" name="pt_enc" value="SUSPENSO"> Serviço suspenso / PT cancelada</label>
+            <label>Observações<textarea id="enc-obs" rows="3"></textarea></label>
+            <span class="label">Assinatura do supervisor no encerramento</span>
+            <canvas id="enc-sig" class="sig-canvas" width="480" height="200"></canvas>
+            <div class="form-actions">
+                <button type="button" class="secondary" id="enc-cancel">Cancelar</button>
+                <button type="button" id="enc-ok">Assinar e encerrar</button>
+            </div>`);
+        const pad = setupSignaturePad($('#enc-sig'));
+        $('#enc-cancel').addEventListener('click', closeModal);
+        $('#enc-ok').addEventListener('click', async () => {
+            const st = document.querySelector('input[name=pt_enc]:checked')?.value || 'CONCLUIDO';
+            if (!pad.desenhou) { toast('Assine antes de confirmar.', true); return; }
+            try {
+                await Api.encerrarDocumento(doc.id, {
+                    pt_encerramento_status: st,
+                    encerramento_obs: $('#enc-obs').value.trim(),
+                    imagem_base64: pad.dataURL(),
+                    dispositivo: navigator.userAgent,
+                });
+                closeModal();
+                toast(st === 'CONCLUIDO' ? 'PT encerrada com sucesso.' : 'PT encerrada como suspensa/cancelada.');
+                render();
             } catch (e) { toast(e.message, true); }
         });
     }
@@ -483,27 +561,14 @@
                     <button type="button" class="secondary" id="sig-cancel">Cancelar</button>
                     <button type="button" id="sig-ok">Confirmar</button>
                 </div>`);
-            const cv = $('#sig-canvas');
-            const ctx = cv.getContext('2d');
-            ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
-            ctx.strokeStyle = '#111'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-            let desenhou = false, draw = false;
-            const pos = (e) => {
-                const r = cv.getBoundingClientRect();
-                const t = e.touches ? e.touches[0] : e;
-                return { x: (t.clientX - r.left) * (cv.width / r.width), y: (t.clientY - r.top) * (cv.height / r.height) };
-            };
-            const start = (e) => { draw = true; desenhou = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
-            const move = (e) => { if (!draw) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
-            const end = () => { draw = false; };
-            cv.addEventListener('mousedown', start); cv.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
-            cv.addEventListener('touchstart', start, { passive: false }); cv.addEventListener('touchmove', move, { passive: false }); cv.addEventListener('touchend', end);
-            $('#sig-clear').addEventListener('click', () => { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); desenhou = false; });
+            const pad = setupSignaturePad($('#sig-canvas'));
+            $('#sig-clear').addEventListener('click', pad.clear);
             $('#sig-cancel').addEventListener('click', () => { closeModal(); resolve(null); });
             $('#sig-ok').addEventListener('click', () => {
-                if (!desenhou) { toast('Assine antes de confirmar.', true); return; }
-                const data = cv.toDataURL('image/png');
-                closeModal(); resolve(data);
+                if (!pad.desenhou) { toast('Assine antes de confirmar.', true); return; }
+                const data = pad.dataURL();
+                closeModal();
+                resolve(data);
             });
         });
     }

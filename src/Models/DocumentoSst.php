@@ -181,9 +181,18 @@ class DocumentoSst
         $stmt->execute([$status, $id]);
     }
 
-    public static function setSupervisor(int $id, int $supervisorId): void    {
+    public static function setSupervisor(int $id, int $supervisorId): void
+    {
         $stmt = Database::getInstance()->prepare('UPDATE documentos_sst SET supervisor_id = ? WHERE id = ?');
         $stmt->execute([$supervisorId, $id]);
+    }
+
+    public static function setPtLiberacao(int $id, string $autorizacao, ?string $nome, ?string $registro): void
+    {
+        $stmt = Database::getInstance()->prepare(
+            'UPDATE documentos_sst SET pt_autorizacao = ?, pt_supervisor_nome = ?, pt_supervisor_registro = ? WHERE id = ?'
+        );
+        $stmt->execute([$autorizacao, $nome, $registro, $id]);
     }
 
     public static function marcarInicio(int $id): void
@@ -194,14 +203,14 @@ class DocumentoSst
         $stmt->execute([$id]);
     }
 
-    public static function marcarEncerrado(int $id, ?int $conforme = null, ?string $obs = null): void
+    public static function marcarEncerrado(int $id, ?int $conforme = null, ?string $obs = null, ?string $ptStatus = null, string $status = 'encerrada'): void
     {
         $stmt = Database::getInstance()->prepare(
-            "UPDATE documentos_sst
-             SET status = 'encerrada', encerrado_em = NOW(), servico_conforme = ?, encerramento_obs = ?
-             WHERE id = ?"
+            'UPDATE documentos_sst
+             SET status = ?, encerrado_em = NOW(), servico_conforme = ?, encerramento_obs = ?, pt_encerramento_status = ?
+             WHERE id = ?'
         );
-        $stmt->execute([$conforme, $obs, $id]);
+        $stmt->execute([$status, $conforme, $obs, $ptStatus, $id]);
     }
 
     public static function setPdfPath(int $id, string $path): void

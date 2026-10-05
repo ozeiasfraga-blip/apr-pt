@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\DocumentoSst;
 use App\Models\Assinatura;
 use App\Models\OrdemServico;
+use App\Models\User;
 use App\Models\Log;
 use App\Services\StorageService;
 use App\Services\PdfService;
@@ -183,7 +184,8 @@ class DocumentoSstController
     }
 
     /**
-     * POST /api/documentos/{id}/aprovar — assinatura do supervisor (PT liberada).
+     * POST /api/documentos/{id}/aprovar — PT: liberação pelo Supervisor/Emissor.
+     * body: imagem_base64, pt_autorizacao (AUTORIZADA|NAO_AUTORIZADA), pt_supervisor_nome, pt_supervisor_registro
      */
     public static function aprovar(string $id): void
     {
@@ -197,6 +199,15 @@ class DocumentoSstController
         }
 
         $data = json_decode(file_get_contents('php://input'), true) ?? [];
+
+        $autorizacao = strtoupper((string)($data['pt_autorizacao'] ?? 'AUTORIZADA'));
+        if (!in_array($autorizacao, ['AUTORIZADA', 'NAO_AUTORIZADA'], true)) {
+            Response::error('Status da permissão inválido.', 422);
+        }
+
+        $emissor = User::getById((int)$authUser->user_id);
+        $nome = trim((string)($data['pt_supervisor_nome'] ?? '')) ?: ($emissor['name'] ?? null);
+        $registro = trim((string)($data['pt_supervisor_registro'] ?? '')) ?: null;
 
         $imagemPath = StorageService::saveBase64Image(
             $data['imagem_base64'] ?? null,
@@ -216,12 +227,12 @@ class DocumentoSstController
         ]);
 
         DocumentoSst::setSupervisor((int)$doc['id'], (int)$authUser->user_id);
-        DocumentoSst::updateStatus((int)$doc['id'], 'liberada');
+        DocumentoSst::setPtLiberacao((int)$doc['id'], $autorizacao, $nome, $registro);
+        DocumentoSst::updateStatus((int)$doc['id'], $autorizacao === 'AUTORIZADA' ? 'liberada' : 'cancelada');
 
         $doc['supervisor_id'] = (int)$authUser->user_id;
         DocumentoSst::setHash((int)$doc['id'], DocumentoSst::calcularHash($doc));
 
-        // Gera o PDF consolidado
         try {
             $pdfPath = PdfService::gerarDocumento(DocumentoSst::getById((int)$doc['id']));
             DocumentoSst::setPdfPath((int)$doc['id'], $pdfPath);
@@ -231,39 +242,68 @@ class DocumentoSstController
 
         Log::create([
             'user_id' => $authUser->user_id,
-            'acao' => 'documento_aprovar',
+            'acao' => 'documento_liberacao_pt',
             'entidade' => 'documentos_sst',
             'entidade_id' => (int)$doc['id'],
-            'detalhes' => ['assinatura_id' => $assinatura],
+            'detalhes' => ['autorizacao' => $autorizacao, 'assinatura_id' => $assinatura],
             'ip' => Middleware::clientIp(),
         ]);
 
-        Response::success(DocumentoSst::getById((int)$doc['id']), 'PT liberada pelo supervisor.');
+        Response::success(
+            DocumentoSst::getById((int)$doc['id']),
+            $autorizacao === 'AUTORIZADA' ? 'PT autorizada pelo supervisor.' : 'PT NÃO autorizada.'
+        );
     }
 
     /**
-     * POST /api/documentos/{id}/encerrar
+     * POST /api/documentos/{id}/encerrar — encerramento da PT pelo supervisor.
+     * body: imagem_base64, pt_encerramento_status (CONCLUIDO|SUSPENSO), encerramento_obs
      */
     public static function encerrar(string $id): void
     {
-        $authUser = Middleware::requireAuth();
+        $authUser = Middleware::requireSupervisor();
         $doc = DocumentoSst::getById((int)$id);
         if (!$doc) {
             Response::error('Documento não encontrado.', 404);
         }
-        self::autorizar($authUser, $doc);
 
         if (!in_array($doc['status'], ['liberada', 'em_execucao'], true)) {
-            Response::error('Somente documentos liberados podem ser encerrados (status: ' . $doc['status'] . ').', 409);
+            Response::error('Somente PT liberadas podem ser encerradas (status: ' . $doc['status'] . ').', 409);
         }
 
         $data = json_decode(file_get_contents('php://input'), true) ?? [];
-        $conforme = isset($data['servico_conforme']) ? (int)(bool)$data['servico_conforme'] : null;
+        $ptStatus = strtoupper((string)($data['pt_encerramento_status'] ?? 'CONCLUIDO'));
+        if (!in_array($ptStatus, ['CONCLUIDO', 'SUSPENSO'], true)) {
+            Response::error('Status de encerramento inválido.', 422);
+        }
         $obs = $data['encerramento_obs'] ?? null;
 
-        DocumentoSst::marcarEncerrado((int)$doc['id'], $conforme, $obs);
+        $imagemPath = StorageService::saveBase64Image(
+            $data['imagem_base64'] ?? null,
+            'assinaturas',
+            'supenc_' . $doc['uuid']
+        );
 
-        // Atualiza o PDF após o encerramento
+        $assinatura = Assinatura::create([
+            'documento_id' => (int)$doc['id'],
+            'tipo' => 'supervisor_encerramento',
+            'user_id' => (int)$authUser->user_id,
+            'imagem_path' => $imagemPath,
+            'ip' => Middleware::clientIp(),
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
+            'dispositivo' => $data['dispositivo'] ?? null,
+        ]);
+
+        $concluido = $ptStatus === 'CONCLUIDO';
+        DocumentoSst::marcarEncerrado(
+            (int)$doc['id'],
+            $concluido ? 1 : 0,
+            $obs,
+            $ptStatus,
+            $concluido ? 'encerrada' : 'cancelada'
+        );
+
         try {
             $pdfPath = PdfService::gerarDocumento(DocumentoSst::getById((int)$doc['id']));
             DocumentoSst::setPdfPath((int)$doc['id'], $pdfPath);
@@ -273,13 +313,17 @@ class DocumentoSstController
 
         Log::create([
             'user_id' => $authUser->user_id,
-            'acao' => 'documento_encerrar',
+            'acao' => 'documento_encerramento_pt',
             'entidade' => 'documentos_sst',
             'entidade_id' => (int)$doc['id'],
+            'detalhes' => ['status' => $ptStatus, 'assinatura_id' => $assinatura],
             'ip' => Middleware::clientIp(),
         ]);
 
-        Response::success(DocumentoSst::getById((int)$doc['id']), 'Documento encerrado.');
+        Response::success(
+            DocumentoSst::getById((int)$doc['id']),
+            $concluido ? 'PT encerrada com sucesso.' : 'PT encerrada como suspensa/cancelada.'
+        );
     }
 
     /**
