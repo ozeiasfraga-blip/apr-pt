@@ -44,6 +44,7 @@ class PdfService
     {
         $e = fn($v) => htmlspecialchars((string)($v ?? ''), ENT_QUOTES, 'UTF-8');
         $j = fn($v) => is_string($v) ? (json_decode($v, true) ?: []) : (is_array($v) ? $v : []);
+        $data = fn($v) => $v ? date('d/m/Y', strtotime((string)$v)) : '';
 
         $status = strtoupper($e($doc['status']));
 
@@ -160,7 +161,7 @@ class PdfService
             <div class="linha"><strong>EPC / Ferramentas</strong></div>' . $lista($doc['epcs'] ?? null) . '
             <div class="linha"><span class="label">Observações:</span> ' . nl2br($e($doc['observacoes'] ?? '')) . '</div>
             <div class="linha"><strong>Assinatura do executante (APR):</strong> ' . ($imgTag($sigTec) ?: '-') .
-                ($sigTec ? ' <small>' . $e($sigTec['user_nome']) . ' — ' . $e($sigTec['assinado_em']) . '</small>' : '') . '</div>
+                ($sigTec ? ' <small>' . $e($sigTec['user_nome']) . ' — ' . $data($sigTec['assinado_em']) . '</small>' : '') . '</div>
 
             <h2>3. PT — PERMISSÃO PARA TRABALHO</h2>
             <div class="box">
@@ -173,7 +174,7 @@ class PdfService
                 </tr></table>
                 <table style="width:100%;margin-top:10px"><tr>
                     <td style="width:60%">Assinatura do Supervisor:<br>' . ($imgTag($sigLiber) ?: '____________________') . '</td>
-                    <td>Data e Hora da Assinatura:<br>' . ($sigLiber ? $e($sigLiber['assinado_em']) : '____/____/______ às ____:____ h') . '</td>
+                    <td>Data da Assinatura:<br>' . ($sigLiber ? $data($sigLiber['assinado_em']) : '____/____/______') . '</td>
                 </tr></table>
             </div>
 
@@ -185,7 +186,7 @@ class PdfService
                 <div class="linha"><span class="label">Observações:</span> ' . nl2br($e($doc['encerramento_obs'] ?? '')) . '</div>
                 <table style="width:100%"><tr>
                     <td style="width:60%">Assinatura do Supervisor no Encerramento:<br>' . ($imgTag($sigEnc) ?: '____________________') . '</td>
-                    <td>Data e Hora do Encerramento:<br>' . ($doc['encerrado_em'] ? $e($doc['encerrado_em']) : '____/____/______ às ____:____ h') . '</td>
+                    <td>Data do Encerramento:<br>' . ($doc['encerrado_em'] ? $data($doc['encerrado_em']) : '____/____/______') . '</td>
                 </tr></table>
             </div>
         </body></html>';

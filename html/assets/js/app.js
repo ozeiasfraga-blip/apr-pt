@@ -245,6 +245,7 @@
         const sigImg = (t) => (sigs[t]?.imagem_path ? `<img src="/api/arquivo?p=${encodeURIComponent(sigs[t].imagem_path)}" style="height:58px">` : '<span class="muted">—</span>');
         const autPT = doc?.pt_autorizacao || '';
         const encPT = doc?.pt_encerramento_status || '';
+        const fmtData = (v) => (v ? String(v).slice(0, 10).split('-').reverse().join('/') : '—');
 
         const riscosSel = keyed(doc?.riscos, 'codigo');
         const episSel = new Set(toArr(doc?.epis));
@@ -309,7 +310,7 @@
                 <div class="termo"><strong>Declaração do executante.</strong> ${esc(cat.textos.declaracao_tecnico || '')}</div>
                 <div class="grid2">
                     <div><span class="label">Assinatura do executante</span><div>${sigImg('tecnico')}</div></div>
-                    <div><span class="label">Assinado em</span><div>${esc(sigs['tecnico']?.assinado_em || '—')}</div></div>
+                    <div><span class="label">Data da assinatura</span><div>${fmtData(sigs['tecnico']?.assinado_em)}</div></div>
                 </div>
             </section>
 
@@ -329,7 +330,7 @@
                 </div>
                 <div class="grid2">
                     <div><span class="label">Assinatura do Supervisor</span><div>${sigImg('supervisor')}</div></div>
-                    <div><span class="label">Data e Hora da Assinatura</span><div>${esc(sigs['supervisor']?.assinado_em || '—')}</div></div>
+                    <div><span class="label">Data da assinatura</span><div>${fmtData(sigs['supervisor']?.assinado_em)}</div></div>
                 </div>
             </section>
 
@@ -346,7 +347,7 @@
                 <div class="field"><span class="label">Observações do encerramento</span><div>${nl2br(doc?.encerramento_obs || '—')}</div></div>
                 <div class="grid2">
                     <div><span class="label">Assinatura do Supervisor no Encerramento</span><div>${sigImg('supervisor_encerramento')}</div></div>
-                    <div><span class="label">Data e Hora do Encerramento</span><div>${esc(doc?.encerrado_em || '—')}</div></div>
+                    <div><span class="label">Data do encerramento</span><div>${fmtData(doc?.encerrado_em)}</div></div>
                 </div>
             </section>
 
