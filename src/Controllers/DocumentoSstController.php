@@ -87,8 +87,13 @@ class DocumentoSstController
             }
         } else {
             $tecnicoId = (int)($data['tecnico_id'] ?? 0);
+            if ($tecnicoId <= 0 && !empty($os['id_tecnico'])) {
+                // Resolve o usuário do técnico vinculado ao funcionário do IXC
+                $tecnicoUser = \App\Models\User::getByIxcId((int)$os['id_tecnico']);
+                $tecnicoId = $tecnicoUser ? (int)$tecnicoUser['id'] : 0;
+            }
             if ($tecnicoId <= 0) {
-                Response::error('tecnico_id é obrigatório para este perfil.', 422);
+                Response::error('Não foi possível identificar o técnico desta OS. Cadastre o técnico com o vínculo ao funcionário do IXC (ou informe tecnico_id) antes de preencher a APR/PT.', 422);
             }
         }
 

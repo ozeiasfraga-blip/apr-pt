@@ -67,6 +67,10 @@ class OrdemServicoController
         }
         $os['documento'] = $doc;
 
+        // Usuário do técnico vinculado (para o admin/supervisor atribuir a APR corretamente)
+        $tecnicoUser = !empty($os['id_tecnico']) ? \App\Models\User::getByIxcId((int)$os['id_tecnico']) : null;
+        $os['tecnico_user_id'] = $tecnicoUser ? (int)$tecnicoUser['id'] : null;
+
         Response::success($os);
     }
 }

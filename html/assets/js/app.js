@@ -448,6 +448,7 @@
         });
         return {
             uuid: doc?.uuid || uid(), os_id: os.id, status: 'rascunho',
+            tecnico_id: os.tecnico_user_id || null,
             nr35: normas.includes('NR-35'), nr10: normas.includes('NR-10'),
             normas, riscos, epis, epcs, checklist,
             atividades: $('#doc-atividades')?.value.trim() || '',
