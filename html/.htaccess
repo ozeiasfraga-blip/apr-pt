@@ -6,6 +6,13 @@ RewriteEngine On
 # API tem regras próprias
 RewriteRule ^api/ - [L]
 
+# O service worker nunca deve vir do cache HTTP (garante atualização da interface)
+<Files "service-worker.js">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</Files>
+
 # Arquivos existentes são servidos direto
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

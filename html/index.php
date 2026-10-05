@@ -62,7 +62,18 @@ require_once __DIR__ . '/../src/bootstrap.php';
     <script src="/assets/js/app.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js').catch(console.error);
+            // updateViaCache: 'none' garante que o próprio SW nunca venha do cache HTTP
+            navigator.serviceWorker.register('/service-worker.js', { updateViaCache: 'none' })
+                .then((reg) => reg.update().catch(() => {}))
+                .catch(console.error);
+
+            // Quando um novo SW assume, recarrega para aplicar a versão nova
+            let recarregando = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (recarregando) return;
+                recarregando = true;
+                location.reload();
+            });
         }
     </script>
 </body>
