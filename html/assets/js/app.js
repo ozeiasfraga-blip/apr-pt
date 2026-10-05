@@ -405,6 +405,7 @@
             const tr = ev.target.closest('tr');
             $('.rk-nivel', tr).textContent = nivel($('.rk-sev', tr).value, $('.rk-prob', tr).value);
         }));
+        $$('.rk-check').forEach((cb) => cb.addEventListener('change', () => preencherRisco(cb.closest('tr'))));
         $$('.norma').forEach((c) => c.addEventListener('change', aplicarNormas));
 
         // Equipe envolvida — assinatura por integrante
@@ -477,18 +478,33 @@
 
     function riscoRow(r, sel, readOnly) {
         const checked = sel ? 'checked' : '';
-        const sev = sel?.sev ?? 1;
-        const prob = sel?.prob ?? 1;
-        const medidas = sel?.medidas ?? r.medidas ?? '';
+        const sev = sel ? (sel.sev ?? 1) : '';
+        const prob = sel ? (sel.prob ?? 1) : '';
+        const medidas = sel ? (sel.medidas || r.medidas || '') : '';
         const opcoes = (v) => [1, 2, 3, 4, 5].map((n) => `<option value="${n}" ${Number(v) === n ? 'selected' : ''}>${n}</option>`).join('');
         const dis = readOnly ? 'disabled' : '';
         return `<tr data-codigo="${esc(r.codigo)}" data-perigo="${esc(r.descricao)}" data-nr="${esc(r.nr || '')}" data-categoria="${esc(r.categoria || '')}" data-medida="${esc(r.medidas || '')}" data-sev="${esc(r.severidade || '')}" data-prob="${esc(r.probabilidade || '')}">
             <td><label class="inline"><input type="checkbox" class="rk-check" ${checked} ${dis}> ${esc(r.descricao)}</label></td>
             <td><select class="rk-sev" ${dis}><option value=""></option>${opcoes(sev)}</select></td>
             <td><select class="rk-prob" ${dis}><option value=""></option>${opcoes(prob)}</select></td>
-            <td class="rk-nivel">${nivel(sev, prob)}</td>
+            <td class="rk-nivel">${sel ? nivel(sev, prob) : '—'}</td>
             <td><input class="rk-medidas" value="${esc(medidas)}" ${dis}></td>
         </tr>`;
+    }
+
+    // Preenche/limpa uma linha de risco conforme marcada
+    function preencherRisco(tr) {
+        const cb = $('.rk-check', tr);
+        const sev = $('.rk-sev', tr), prob = $('.rk-prob', tr), med = $('.rk-medidas', tr);
+        if (cb.checked) {
+            if (!sev.value) sev.value = tr.dataset.sev || 1;
+            if (!prob.value) prob.value = tr.dataset.prob || 1;
+            if (med && !med.value) med.value = tr.dataset.medida || '';
+            $('.rk-nivel', tr).textContent = nivel(sev.value, prob.value);
+        } else {
+            sev.value = ''; prob.value = ''; if (med) med.value = '';
+            $('.rk-nivel', tr).textContent = '—';
+        }
     }
 
     function checkRow(i, resposta, readOnly) {
@@ -506,16 +522,8 @@
             const nr = tr.dataset.nr;
             const cb = $('.rk-check', tr);
             if (!nr || !cb || cb.disabled) return;
-            const marcar = normas.includes(nr);
-            cb.checked = marcar;
-            if (marcar) {
-                const sev = $('.rk-sev', tr), prob = $('.rk-prob', tr);
-                if (!sev.value && tr.dataset.sev) sev.value = tr.dataset.sev;
-                if (!prob.value && tr.dataset.prob) prob.value = tr.dataset.prob;
-                $('.rk-nivel', tr).textContent = nivel(sev.value, prob.value);
-                const med = $('.rk-medidas', tr);
-                if (med && !med.value && tr.dataset.medida) med.value = tr.dataset.medida;
-            }
+            cb.checked = normas.includes(nr);
+            preencherRisco(tr);
         });
 
         // EPIs e EPCs
@@ -555,12 +563,15 @@
 
     // Coleta os dados do formulário
     function coletar(os, doc) {
-        const riscos = $$('tr[data-codigo]').filter((tr) => $('.rk-check', tr).checked).map((tr) => ({
-            codigo: tr.dataset.codigo, perigo: tr.dataset.perigo, nr: tr.dataset.nr, categoria: tr.dataset.categoria,
-            sev: +$('.rk-sev', tr).value || null, prob: +$('.rk-prob', tr).value || null,
-            nivel: nivel($('.rk-sev', tr).value, $('.rk-prob', tr).value),
-            medidas: $('.rk-medidas', tr).value.trim(),
-        }));
+        const riscos = $$('tr[data-codigo]').filter((tr) => $('.rk-check', tr).checked).map((tr) => {
+            const sev = +$('.rk-sev', tr).value || 1;
+            const prob = +$('.rk-prob', tr).value || 1;
+            return {
+                codigo: tr.dataset.codigo, perigo: tr.dataset.perigo, nr: tr.dataset.nr, categoria: tr.dataset.categoria,
+                sev, prob, nivel: nivel(sev, prob),
+                medidas: $('.rk-medidas', tr).value.trim(),
+            };
+        });
         const epis = $$('.epi:checked').map((x) => x.value);
         const epcs = $$('.epc:checked').map((x) => x.value);
         const normas = $$('.norma:checked').map((x) => x.value);
