@@ -15,7 +15,7 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke=
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" type="image/png" href="/assets/img/favicon.png">
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/assets/css/style.css') ?>">
 </head>
 <body>
     <!-- ── Login ─────────────────────────────────────────── -->
@@ -51,7 +51,7 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke=
                 <img class="brand-nwt" src="/assets/img/nwt-logo.png" alt="NWT Telecom">
             </a>
             <nav id="nav" class="nav">
-                <a href="#os" data-view="os">Ordens de Serviço</a>
+                <a href="#os" data-view="os">OS</a>
                 <a href="#documentos" data-view="documentos">APR/PT</a>
                 <a href="#usuarios" data-view="usuarios" data-roles="supervisor,admin">Usuários</a>
                 <a href="#modelo" data-view="modelo" data-roles="supervisor,admin">Modelo APR/PT</a>
@@ -79,8 +79,8 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke=
 
     <div id="toast" class="toast hidden"></div>
 
-    <script src="/assets/js/api.js"></script>
-    <script src="/assets/js/app.js"></script>
+    <script src="/assets/js/api.js?v=<?= @filemtime(__DIR__ . '/assets/js/api.js') ?>"></script>
+    <script src="/assets/js/app.js?v=<?= @filemtime(__DIR__ . '/assets/js/app.js') ?>"></script>
     <script>
         if ('serviceWorker' in navigator) {
             // updateViaCache: 'none' garante que o próprio SW nunca venha do cache HTTP

@@ -13,6 +13,11 @@ RewriteRule ^api/ - [L]
     Header set Expires "0"
 </Files>
 
+# A página inicial é sempre revalidada (garante que os assets versionados novos cheguem ao app)
+<Files "index.php">
+    Header set Cache-Control "no-cache, must-revalidate"
+</Files>
+
 # Arquivos existentes são servidos direto
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

@@ -500,9 +500,17 @@ button.link.danger:hover { background: #fdecec; }
     .grid2 { grid-template-columns: 1fr; }
     .panel { padding: 17px 15px; }
     .topbar { padding: 8px 12px; gap: 10px; }
-    /* Navegação em linha própria, quebrando em linhas: nada fica escondido */
-    .nav { order: 3; width: 100%; flex: 1 1 100%; flex-wrap: wrap; }
-    .nav a { white-space: nowrap; padding: 7px 11px; font-size: 13.5px; }
+    /* Cabeçalho em uma única linha: escudo + navegação + usuário */
+    .topbar { padding: 6px 10px; gap: 8px; flex-wrap: nowrap; min-height: 52px; }
+    .brand .brand-mark { width: 32px; height: 32px; }
+    .brand > span:not(.brand-mark) { display: none; } /* texto "APR/PT" sai no celular; o selo NWT fica */
+    .brand-nwt { height: 14px; padding: 3px 5px; }
+    .nav { order: 0; width: auto; flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+    .nav::-webkit-scrollbar { display: none; }
+    .nav a { white-space: nowrap; padding: 6px 10px; font-size: 13px; }
+    .user-box { flex: none; gap: 8px; }
+    #user-avatar { width: 28px; height: 28px; font-size: 11px; }
+    #btn-logout { padding: 5px 10px; font-size: 12.5px; }
     .grid { min-width: 620px; }
     .sticky-actions { margin: 4px -6px 0; }
     .sticky-actions button, .sticky-actions .btn-link { flex: 1 1 auto; }
