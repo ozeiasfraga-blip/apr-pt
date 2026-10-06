@@ -12,13 +12,20 @@
 !/storage/assinaturas/.gitkeep
 !/storage/anexos/.gitkeep
 
+# Projeto Android — artefatos de build e chave privada
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/local.properties
+/android/*.keystore
+/android/app-release-*.apk
+/android/app-release-*.aab
+/android/*.idsig
+
+# APK publicado (artefato de build — gerado pelo projeto em /android)
+/html/apk/*.apk
+
 # Logs e temporários
 *.log
 .DS_Store
 Thumbs.db
-
-# PWA build (Bubblewrap/TWA)
-/apk/build/
-/apk/*.apk
-/apk/*.aab
-/apk/*.keystore

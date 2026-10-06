@@ -15,7 +15,8 @@ dos técnicos. Integra-se de forma **somente leitura** ao ERP **IXC Soft** (API 
 - **PHP** 8.2 (sem framework, MVC próprio)
 - **MySQL/MariaDB** com PDO (sem ORM)
 - **Vanilla JS** (sem framework frontend)
-- **PWA** (offline-first, service worker + IndexedDB) empacotado como APK via TWA/Bubblewrap
+- **App Android nativo** (WebView em tela cheia, projeto em `android/`) distribuído como APK
+- **PWA** (service worker + manifest) para acesso pelo navegador
 - **JWT** (`firebase/php-jwt`), **dotenv** (`vlucas/phpdotenv`), **Dompdf** (PDF)
 
 ## Estrutura
@@ -35,8 +36,10 @@ dos técnicos. Integra-se de forma **somente leitura** ao ERP **IXC Soft** (API 
 │   ├── index.php         # SPA entry
 │   ├── views/            # Páginas
 │   ├── assets/js|css/    # JS e CSS
+│   ├── apk/              # APK publicado, página de download e versao.json
 │   ├── manifest.webmanifest
 │   └── service-worker.js
+├── android/              # Projeto do app Android nativo (WebView) + keystore
 ├── migrations/           # Schema SQL
 ├── scripts/              # Cron (ex: sync_os.php)
 ├── storage/              # PDFs, assinaturas e anexos (runtime)
@@ -55,6 +58,22 @@ dos técnicos. Integra-se de forma **somente leitura** ao ERP **IXC Soft** (API 
 | `src/Models/DocumentoSst.php` | Documento único APR/PT |
 | `scripts/sync_os.php` | Sincroniza as OS do dia (cron) |
 | `migrations/001_init.sql` | Schema inicial |
+| `android/app/src/main/java/br/net/nwt/aprpt/MainActivity.java` | App Android nativo (WebView) |
+| `android/README.md` | Como gerar e publicar o APK |
+| `html/apk/versao.json` | Versão publicada do APK (usada pelo aviso de atualização) |
+
+## App Android (APK)
+
+- Projeto em `android/`: app nativo com WebView própria que carrega
+  `http://177.125.60.123:8089/` em tela cheia (sem barra de navegador e sem depender
+  do Chrome). Como as telas vêm do servidor, mudanças na web chegam automaticamente.
+- **Gerar:** `cd android && ANDROID_HOME=/opt/android-sdk ./gradlew assembleRelease`
+- **Publicar:** copie `app/build/outputs/apk/release/app-release.apk` para
+  `html/apk/app.apk`, incremente `versionCode`/`versionName` em `android/app/build.gradle`
+  e atualize `html/apk/versao.json` (o app avisa os usuários da nova versão).
+- **Keystore:** `android/android.keystore` (alias `android`, senha `AprPT@2026`) —
+  **não versionada**. Sem ela o Android recusa atualizar o app instalado.
+- O download fica em `http://177.125.60.123:8089/apk/`.
 
 ## Integração IXC (WebService v1)
 
@@ -75,6 +94,7 @@ php -l <file>              # Verificar sintaxe PHP
 node --check <file>.js     # Verificar sintaxe JS
 composer install           # Instalar dependências
 php scripts/sync_os.php    # Sincronizar OS do dia (manual)
+cd android && ANDROID_HOME=/opt/android-sdk ./gradlew assembleRelease  # Gerar o APK
 ```
 
 ## Observações

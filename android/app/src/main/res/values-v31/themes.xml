@@ -1,0 +1,7 @@
+<resources>
+    <!-- Android 12+: tela de abertura com a cor da marca e o ícone do app -->
+    <style name="Theme.Aprpt" parent="Theme.Aprpt.Base">
+        <item name="android:windowSplashScreenBackground">@color/brand</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+    </style>
+</resources>

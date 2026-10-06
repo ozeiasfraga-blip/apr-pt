@@ -4,7 +4,7 @@
 
     const $ = (s, r = document) => r.querySelector(s);
     const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-    const state = { user: null, funcionarios: null, catalogo: null };
+    const state = { user: null, funcionarios: null, catalogo: null, apkVersao: null };
 
     const ROLE_LABEL = { tecnico: 'Técnico', supervisor: 'Supervisor', admin: 'Administrador' };
     const STATUS_LABEL = {
@@ -41,6 +41,65 @@
     function openModal(title, html) { $('#modal-title').textContent = title; $('#modal-body').innerHTML = html; $('#modal').classList.remove('hidden'); }
     function closeModal() { $('#modal').classList.add('hidden'); }
 
+    // ── Atualização do aplicativo (APK) ────────────────────
+    // As mudanças na web chegam sozinhas (sem baixar nada). O banner aparece
+    // apenas quando publicamos uma nova versão do APK em /apk/versao.json.
+    async function verificarAtualizacaoApp() {
+        try {
+            const r = await fetch('/apk/versao.json', { cache: 'no-store' });
+            if (!r.ok) return;
+            state.apkVersao = await r.json();
+            exibirBannerSeNecessario();
+        } catch (_) { /* offline ou sem versão publicada */ }
+    }
+    // Detecta o app Android nativo (window.AprptApp — ver android/.../MainActivity.java)
+    function versaoAppNativo() {
+        try {
+            return (window.AprptApp && window.AprptApp.versao) ? String(window.AprptApp.versao()) : null;
+        } catch (_) { return null; }
+    }
+    function exibirBannerSeNecessario() {
+        const v = state.apkVersao;
+        if (!v || !v.versao || $('#apk-banner')) return;
+
+        // Só anuncia o APK dentro de um app instalado (nativo ou PWA em modo standalone).
+        const nativa = versaoAppNativo();
+        const noApp = !!nativa || window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+        if (!noApp) return;
+
+        // Já estamos no app nativo e na versão publicada: nada para atualizar.
+        if (nativa && nativa === v.versao) {
+            localStorage.setItem('aprpt_apk_versao', v.versao);
+            return;
+        }
+
+        const visto = localStorage.getItem('aprpt_apk_versao');
+        if (v.versao === visto) return;
+
+        const el = document.createElement('div');
+        el.id = 'apk-banner';
+        el.className = 'apk-banner';
+        el.innerHTML = `
+            <div class="apk-banner-txt">
+                <strong>${noApp ? 'Nova versão disponível' : 'Versão do aplicativo disponível'}</strong>
+                <span class="muted">Versão ${esc(v.versao)}${v.novidades ? ' — ' + esc(v.novidades) : ''}</span>
+            </div>
+            <div class="apk-banner-acoes">
+                <a class="btn-link" href="${esc(v.apk || '/apk/app.apk')}">Atualizar agora</a>
+                <button type="button" class="secondary" id="apk-banner-depois">Depois</button>
+            </div>`;
+        const host = $('#content');
+        if (!host) return;
+        host.prepend(el);
+        $('#apk-banner-depois').addEventListener('click', () => {
+            localStorage.setItem('aprpt_apk_versao', v.versao);
+            el.remove();
+        });
+        $('.apk-banner .btn-link', el).addEventListener('click', () => {
+            localStorage.setItem('aprpt_apk_versao', v.versao);
+        });
+    }
+
     async function getCatalogo() { if (!state.catalogo) state.catalogo = await Api.catalogo(); return state.catalogo; }
 
     // ── Autenticação ────────────────────────────────────────
@@ -54,6 +113,7 @@
         $('#user-avatar').textContent = iniciais || '?';
         $$('#nav a[data-roles]').forEach((a) => a.classList.toggle('hidden', !a.dataset.roles.split(',').includes(user.role)));
         render();
+        verificarAtualizacaoApp();
     }
 
     // ── Roteador ────────────────────────────────────────────
@@ -61,6 +121,7 @@
         const hash = (location.hash || '#os').replace('#', '');
         const [view, param] = hash.split('/');
         $$('#nav a').forEach((a) => a.classList.toggle('active', a.dataset.view === view));
+        setTimeout(exibirBannerSeNecessario, 0);
 
         if (view === 'usuarios') { if (!isSupervisor()) { location.hash = '#os'; return; } return renderUsuarios(); }
         if (view === 'modelo') { if (!isSupervisor()) { location.hash = '#os'; return; } return renderModelo(); }

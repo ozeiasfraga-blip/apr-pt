@@ -13,6 +13,8 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke=
     <meta name="color-scheme" content="light">
     <title><?= $marca ?></title>
     <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/png" href="/assets/img/favicon.png">
+    <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body>
