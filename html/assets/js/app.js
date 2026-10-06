@@ -527,7 +527,7 @@
 
                 <div class="field"><span class="label">Normas aplicáveis</span>
                     <div class="chips">${NORMAS.map((n) => `<label class="chip"><input type="checkbox" class="norma" value="${esc(n)}" ${normasSel.has(n) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(n)}</label>`).join('')}</div>
-                    <small class="muted">Ao marcar uma NR, as ferramentas, EPIs/EPCs e riscos correspondentes são marcados automaticamente.</small>
+                    <small class="muted">Ao marcar uma NR, os riscos, EPIs/EPCs, checklist e os treinamentos correspondentes são marcados automaticamente (desmarque o que não se aplicar).</small>
                 </div>
 
                 <span class="label">Ferramentas Utilizadas</span>
@@ -791,6 +791,15 @@
             if (!sim || sim.disabled) return;
             sim.checked = itemTemNr(el.dataset.nr, normas);
         });
+
+        // Validade dos treinamentos / habilitação — preenche conforme as NRs;
+        // o técnico pode desmarcar quando não se aplicar.
+        const trnNr10 = $('#trn-nr10');
+        const trnNr35 = $('#trn-nr35');
+        const trnAso = $('#trn-aso');
+        if (trnNr10 && !trnNr10.disabled) trnNr10.checked = normas.includes('NR-10');
+        if (trnNr35 && !trnNr35.disabled) trnNr35.checked = normas.includes('NR-35');
+        if (trnAso && !trnAso.disabled) trnAso.checked = normas.includes('NR-10') || normas.includes('NR-35');
 
         toast(normas.length ? `Campos de ${normas.join(', ')} marcados automaticamente.` : 'NRs desmarcadas — itens automáticos limpos.');
     }
