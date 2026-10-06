@@ -198,20 +198,24 @@
             <thead><tr><th>Hora</th><th>Cliente</th>${isSupervisor() ? '<th>Técnico</th>' : ''}<th>Assunto</th><th>Status</th><th>APR/PT</th><th></th></tr></thead>
             <tbody>${rows.map(rowOs).join('')}</tbody></table>`;
         $$('[data-abrir]').forEach((b) => b.addEventListener('click', () => { location.hash = '#doc/' + b.dataset.abrir; }));
+        $$('#os-body tr[data-linha-os]').forEach((tr) => tr.addEventListener('click', (ev) => {
+            if (ev.target.closest('button')) return;
+            location.hash = '#doc/' + tr.dataset.linhaOs;
+        }));
     }
     function rowOs(o) {
         const hora = (o.data_agenda || '').slice(11, 16);
         const d = o.documento;
         const doc = d ? `<span class="tag tag-${d.status}">${STATUS_LABEL[d.status] || d.status}</span>` : '<span class="muted">—</span>';
         const acao = isSupervisor() ? 'Abrir' : (d ? 'Ver / continuar' : 'Preencher');
-        return `<tr>
-            <td>${esc(hora)}</td>
-            <td>${esc(o.cliente || '(sem nome)')}<br><small class="muted">#${esc(o.ixc_id)} · ${esc(o.cidade || '')}</small></td>
-            ${isSupervisor() ? `<td>${esc(o.tecnico_nome || '')}</td>` : ''}
-            <td>${esc(o.assunto || '')}</td>
-            <td><span class="tag">${esc(OS_STATUS[o.status_ixc] || o.status_ixc || '')}</span></td>
-            <td>${doc}</td>
-            <td><button class="link" data-abrir="${o.id}">${acao}</button></td>
+        return `<tr class="linha-os" data-linha-os="${o.id}">
+            <td class="c-hora">${esc(hora)}</td>
+            <td class="c-cliente">${esc(o.cliente || '(sem nome)')}<br><small class="muted">#${esc(o.ixc_id)} · ${esc(o.cidade || '')}</small></td>
+            ${isSupervisor() ? `<td class="c-tec">${esc(o.tecnico_nome || '')}</td>` : ''}
+            <td class="c-assunto">${esc(o.assunto || '')}</td>
+            <td class="c-status"><span class="tag">${esc(OS_STATUS[o.status_ixc] || o.status_ixc || '')}</span></td>
+            <td class="c-doc">${doc}</td>
+            <td class="c-acao"><button class="link" data-abrir="${o.id}">${acao}</button></td>
         </tr>`;
     }
 
@@ -258,10 +262,14 @@
                 const docs = await Api.listDocumentos(params);
                 fillDocTecOptions(docs);
                 $('#d-body').innerHTML = docs.length ? `<table class="grid">
-                    <thead><tr><th>OS</th><th>Cliente</th><th>Técnico</th><th>Data</th><th>Status</th><th>Supervisor</th><th></th></tr></thead>
-                    <tbody>${docs.map(rowDoc).join('')}</tbody></table>`
+                    <thead><tr><th>OS</th><th>Cliente</th>${isSupervisor() ? '<th>Técnico</th>' : ''}<th>Data</th><th>Status</th><th>Supervisor</th><th></th></tr></thead>
+                    <tbody>${linhasDocs(docs)}</tbody></table>`
                     : '<p class="muted">Nenhum documento encontrado com esses filtros.</p>';
                 $$('[data-abrir-doc]').forEach((b) => b.addEventListener('click', () => { location.hash = '#doc/' + b.dataset.abrirDoc; }));
+                $$('#d-body tr[data-linha-doc]').forEach((tr) => tr.addEventListener('click', (ev) => {
+                    if (ev.target.closest('button')) return;
+                    location.hash = '#doc/' + tr.dataset.linhaDoc;
+                }));
             } catch (e) { $('#d-body').innerHTML = `<p class="error">${esc(e.message)}</p>`; }
         };
 
@@ -281,16 +289,30 @@
         resumo();
         load();
     }
+    /** Lista de APR/PT agrupada por status (o que precisa de ação aparece primeiro). */
+    function linhasDocs(docs) {
+        const cols = isSupervisor() ? 7 : 6;
+        const conhecidos = new Set(STATUS_ORDEM);
+        const grupos = STATUS_ORDEM.map((st) => [st, docs.filter((d) => d.status === st)]);
+        const outros = docs.filter((d) => !conhecidos.has(d.status));
+        if (outros.length) grupos.push(['outros', outros]);
+
+        return grupos.filter(([, lista]) => lista.length).map(([st, lista]) => {
+            const rotulo = st === 'outros' ? 'Outros' : (STATUS_LABEL[st] || st);
+            return `<tr class="linha-grupo"><td colspan="${cols}">${esc(rotulo)} · ${lista.length}</td></tr>`
+                + lista.map(rowDoc).join('');
+        }).join('');
+    }
     function rowDoc(d) {
         const data = (d.data_agenda || '').slice(0, 10).split('-').reverse().join('/');
-        return `<tr>
-            <td>#${esc(d.ixc_id || d.os_id)}</td>
-            <td>${esc(d.cliente || '')}</td>
-            <td>${esc(d.tecnico_nome || '')}</td>
-            <td>${esc(data)}</td>
-            <td><span class="tag tag-${d.status}">${STATUS_LABEL[d.status] || d.status}</span></td>
-            <td>${esc(d.supervisor_nome || '—')}</td>
-            <td><button class="link" data-abrir-doc="${d.os_id}">Abrir</button></td>
+        return `<tr class="linha-doc" data-linha-doc="${d.os_id}">
+            <td class="c-os">#${esc(d.ixc_id || d.os_id)}</td>
+            <td class="c-cliente">${esc(d.cliente || '')}</td>
+            ${isSupervisor() ? `<td class="c-tec">${esc(d.tecnico_nome || '')}</td>` : ''}
+            <td class="c-data">${esc(data)}</td>
+            <td class="c-status"><span class="tag tag-${d.status}">${STATUS_LABEL[d.status] || d.status}</span></td>
+            <td class="c-sup">${esc(d.supervisor_nome || '')}</td>
+            <td class="c-acao"><button class="link" data-abrir-doc="${d.os_id}">Abrir</button></td>
         </tr>`;
     }
 

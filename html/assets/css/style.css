@@ -263,6 +263,13 @@ button.link.danger:hover { background: #fdecec; }
 .grid.compact input[type="radio"] { margin: 0; padding: 0; }
 .table-wrap { margin-top: 6px; }
 
+/* Grupos de status na lista de APR/PT (ordem de trabalho) */
+#d-body .grid tr.linha-grupo td {
+    background: #eaf2fb; color: var(--brand); font-weight: 700;
+    font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase;
+    padding: 8px 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+
 /* ── Tags / status ──────────────────────────────────────── */
 .tag {
     display: inline-flex; align-items: center; gap: 6px;
@@ -501,6 +508,52 @@ button.link.danger:hover { background: #fdecec; }
     .sticky-actions button, .sticky-actions .btn-link { flex: 1 1 auto; }
     .modal-box { max-height: 94vh; }
     .sig-canvas { height: 170px; }
+
+    /* Listas de OS e APR/PT: cartões compactos (sem rolagem lateral) */
+    #os-body, #d-body { overflow-x: visible; }
+    #os-body .grid, #d-body .grid { min-width: 0; width: 100%; }
+    #os-body .grid thead, #d-body .grid thead { display: none; }
+    #os-body .grid tbody, #d-body .grid tbody { display: block; }
+    #os-body .grid tr.linha-os, #d-body .grid tr.linha-doc {
+        display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px;
+        background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--brand-3);
+        border-radius: 12px; padding: 10px 12px; margin: 0 0 9px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+    }
+    #os-body .grid tr.linha-os:active, #d-body .grid tr.linha-doc:active { background: #f2f7fd; }
+    #os-body .grid tr.linha-os td, #d-body .grid tr.linha-doc td { display: block; border: 0; padding: 0; background: transparent; }
+    #os-body .grid tbody tr:nth-child(even) td, #d-body .grid tbody tr:nth-child(even) td,
+    #os-body .grid tbody tr:hover td, #d-body .grid tbody tr:hover td { background: transparent; }
+
+    /* Cartão da OS */
+    #os-body .grid td.c-hora { order: 1; font-weight: 700; color: var(--brand); }
+    #os-body .grid td.c-status { order: 2; margin-left: auto; }
+    #os-body .grid td.c-cliente { order: 3; flex: 1 1 100%; font-weight: 600; font-size: 14.5px; line-height: 1.3; }
+    #os-body .grid td.c-cliente small { font-weight: 400; }
+    #os-body .grid td.c-tec { order: 4; color: var(--muted); font-size: 12.5px; }
+    #os-body .grid td.c-assunto { order: 5; color: var(--muted); font-size: 12.5px; }
+    #os-body .grid td.c-tec:not(:empty) + td.c-assunto:not(:empty)::before { content: "·"; margin-right: 6px; color: var(--line-strong); }
+    #os-body .grid td.c-doc { order: 6; }
+    #os-body .grid td.c-acao { order: 7; margin-left: auto; }
+    #os-body .grid td.c-acao .link { font-size: 12.5px; }
+
+    /* Cartão do APR/PT */
+    #d-body .grid td.c-os { order: 1; font-weight: 700; color: var(--brand); }
+    #d-body .grid td.c-status { order: 2; margin-left: auto; }
+    #d-body .grid td.c-cliente { order: 3; flex: 1 1 100%; font-weight: 600; font-size: 14.5px; line-height: 1.3; }
+    #d-body .grid td.c-tec, #d-body .grid td.c-data, #d-body .grid td.c-sup { order: 4; color: var(--muted); font-size: 12.5px; }
+    #d-body .grid td.c-tec:not(:empty) + td.c-data::before { content: "·"; margin-right: 6px; color: var(--line-strong); }
+    #d-body .grid td.c-sup:not(:empty)::before { content: "·"; margin-right: 6px; color: var(--line-strong); }
+    #d-body .grid td.c-sup:empty { display: none; }
+    #d-body .grid td.c-acao { order: 5; margin-left: auto; }
+    #d-body .grid td.c-acao .link { font-size: 12.5px; }
+
+    /* Divisores de grupo viram títulos de seção no celular */
+    #d-body .grid tr.linha-grupo { display: block; background: transparent; border: 0; box-shadow: none; padding: 10px 2px 3px; margin: 0; }
+    #d-body .grid tr.linha-grupo td {
+        background: transparent; border: 0; padding: 0;
+        font-size: 11px; color: var(--muted); letter-spacing: .06em;
+    }
 }
 @media (max-width: 420px) {
     .card { padding: 24px 18px; }
