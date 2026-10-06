@@ -110,3 +110,7 @@ cd android && ANDROID_HOME=/opt/android-sdk ./gradlew assembleRelease  # Gerar o
   `/etc/cron.d/aprpt-sync` (a cada 15 minutos; cópia versionada em
   `scripts/cron.d/aprpt-sync`). Se o cron for perdido, restaure com:
   `cp scripts/cron.d/aprpt-sync /etc/cron.d/ && chmod 644 /etc/cron.d/aprpt-sync`.
+- Os itens do catálogo (`catalogo_riscos`, `catalogo_epis`, `catalogo_epc`,
+  `catalogo_checklist`) aceitam **várias NRs** na coluna `nr`, separadas por
+  vírgula (ex.: `NR-10,NR-35`). O formulário marca o item quando **qualquer uma**
+  das normas dele estiver selecionada.

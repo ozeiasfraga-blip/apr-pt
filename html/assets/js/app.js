@@ -760,33 +760,36 @@
         return `<div class="check-item" data-codigo="${esc(i.codigo)}" data-nr="${esc(i.nr || '')}"><div>${esc(i.descricao)}${Number(i.critico) ? ' <span class="req">*</span>' : ''}</div><div class="chips">${r('sim')}${r('nao')}${r('na')}</div></div>`;
     }
 
+    // Cada item pode ter várias NRs separadas por vírgula (ex.: "NR-10,NR-35").
+    // O item é marcado quando QUALQUER uma das normas dele estiver selecionada.
+    const itemTemNr = (valor, selecionadas) => String(valor || '')
+        .split(',').map((s) => s.trim()).filter(Boolean)
+        .some((n) => selecionadas.includes(n));
+
     // Marca automaticamente riscos/EPIs/EPCs/checklist conforme as NRs selecionadas
     function aplicarNormas() {
         const normas = $$('.norma:checked').map((x) => x.value);
 
         // Riscos (itens com NR definida)
         $$('tr[data-codigo]').forEach((tr) => {
-            const nr = tr.dataset.nr;
             const cb = $('.rk-check', tr);
-            if (!nr || !cb || cb.disabled) return;
-            cb.checked = normas.includes(nr);
+            if (!tr.dataset.nr || !cb || cb.disabled) return;
+            cb.checked = itemTemNr(tr.dataset.nr, normas);
             preencherRisco(tr);
         });
 
         // EPIs e EPCs
         $$('.epi, .epc').forEach((cb) => {
-            const nr = cb.dataset.nr;
-            if (!nr || cb.disabled) return;
-            cb.checked = normas.includes(nr);
+            if (!cb.dataset.nr || cb.disabled) return;
+            cb.checked = itemTemNr(cb.dataset.nr, normas);
         });
 
         // Checklist
         $$('.check-item').forEach((el) => {
-            const nr = el.dataset.nr;
-            if (!nr) return;
+            if (!el.dataset.nr) return;
             const sim = el.querySelector('input[type=radio][value="sim"]');
             if (!sim || sim.disabled) return;
-            sim.checked = normas.includes(nr);
+            sim.checked = itemTemNr(el.dataset.nr, normas);
         });
 
         toast(normas.length ? `Campos de ${normas.join(', ')} marcados automaticamente.` : 'NRs desmarcadas — itens automáticos limpos.');
@@ -1115,7 +1118,7 @@
             campos: [
                 { k: 'codigo', l: 'Código', t: 'text' },
                 { k: 'categoria', l: 'Categoria (NR-35 / NR-10 / GERAL)', t: 'text' },
-                { k: 'nr', l: 'Norma', t: 'text' },
+                { k: 'nr', l: 'Normas (marcação automática)', t: 'nr' },
                 { k: 'descricao', l: 'Perigo', t: 'text', req: true },
                 { k: 'fonte', l: 'Fonte geradora', t: 'text' },
                 { k: 'consequencia', l: 'Consequência', t: 'text' },
@@ -1130,7 +1133,7 @@
             campos: [
                 { k: 'codigo', l: 'Código', t: 'text' },
                 { k: 'descricao', l: 'Descrição', t: 'text', req: true },
-                { k: 'nr', l: 'Norma (opcional)', t: 'text' },
+                { k: 'nr', l: 'Normas (marcação automática)', t: 'nr' },
                 { k: 'ordem', l: 'Ordem', t: 'number' },
                 { k: 'ativo', l: 'Ativo', t: 'bool' },
             ],
@@ -1141,7 +1144,7 @@
             campos: [
                 { k: 'codigo', l: 'Código', t: 'text' },
                 { k: 'descricao', l: 'Descrição', t: 'text', req: true },
-                { k: 'nr', l: 'Norma (auto-preenchimento)', t: 'text' },
+                { k: 'nr', l: 'Normas (marcação automática)', t: 'nr' },
                 { k: 'ordem', l: 'Ordem', t: 'number' },
                 { k: 'ativo', l: 'Ativo', t: 'bool' },
             ],
@@ -1153,7 +1156,7 @@
                 { k: 'codigo', l: 'Código', t: 'text' },
                 { k: 'descricao', l: 'Item', t: 'text', req: true },
                 { k: 'grupo', l: 'Grupo', t: 'text' },
-                { k: 'nr', l: 'Norma (auto-preenchimento)', t: 'text' },
+                { k: 'nr', l: 'Normas (marcação automática)', t: 'nr' },
                 { k: 'critico', l: 'Item crítico', t: 'bool' },
                 { k: 'ordem', l: 'Ordem', t: 'number' },
                 { k: 'ativo', l: 'Ativo', t: 'bool' },
@@ -1201,6 +1204,7 @@
     function campoLabel(def, k) { const c = def.campos.find((x) => x.k === k); return c ? c.l : k; }
     function celula(v, c) {
         if (['ativo', 'critico'].includes(c)) return Number(v) ? 'Sim' : 'Não';
+        if (c === 'nr' && v) return esc(String(v).split(',').map((s) => s.trim()).join(' · '));
         return esc(v ?? '');
     }
 
@@ -1209,6 +1213,12 @@
         const isEdit = !!item;
         const campos = def.campos.map((c) => {
             const v = item ? (item[c.k] ?? '') : (c.t === 'bool' ? 1 : c.k === 'ordem' ? 0 : '');
+            if (c.t === 'nr') {
+                const atuais = String(v || '').split(',').map((s) => s.trim()).filter(Boolean);
+                const opcoes = [...NORMAS, ...atuais.filter((a) => !NORMAS.includes(a))];
+                return `<span class="label">${esc(c.l)}</span>
+                    <div class="checks">${opcoes.map((n) => `<label class="chip"><input type="checkbox" name="${c.k}" value="${esc(n)}" ${atuais.includes(n) ? 'checked' : ''}> ${esc(n)}</label>`).join('')}</div>`;
+            }
             if (c.t === 'bool') return `<label class="inline"><input type="checkbox" name="${c.k}" ${Number(v) ? 'checked' : ''}> ${esc(c.l)}</label>`;
             if (c.t === 'textarea') return `<label>${esc(c.l)}<textarea name="${c.k}" rows="3">${esc(v)}</textarea></label>`;
             if (c.t === 'number') return `<label>${esc(c.l)}<input type="number" name="${c.k}" value="${esc(v)}"></label>`;
@@ -1224,6 +1234,7 @@
             const f = new FormData(ev.target);
             const payload = {};
             def.campos.forEach((c) => {
+                if (c.t === 'nr') { payload[c.k] = f.getAll(c.k).join(','); return; }
                 payload[c.k] = c.t === 'bool' ? (f.get(c.k) ? 1 : 0) : (c.t === 'number' ? (+f.get(c.k) || 0) : (f.get(c.k) || '').trim());
             });
             try {

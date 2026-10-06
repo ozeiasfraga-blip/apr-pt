@@ -1,8 +1,8 @@
 {
-    "versao": "1.3.0",
-    "versionCode": 4,
+    "versao": "1.3.1",
+    "versionCode": 5,
     "apk": "/apk/app.apk",
     "tamanho": "200 KB",
     "publicado_em": "2026-10-06",
-    "novidades": "Agora funciona sem internet: as OS do dia e a APR/PT ficam salvas no aparelho e são enviadas quando a conexão volta."
+    "novidades": "Itens do modelo aceitam várias NRs (ex.: luvas e óculos valem para NR-10 e NR-35)."
 }
