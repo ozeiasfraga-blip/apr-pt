@@ -86,6 +86,12 @@ h1, h2, h3 { color: #0b1220; letter-spacing: -.01em; }
 .login-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
 .login-head h1 { font-size: 22px; margin: 0; }
 .login-head p { margin: 2px 0 0; font-size: 13px; color: var(--muted); line-height: 1.35; }
+.login-empresa {
+    display: flex; justify-content: center;
+    margin: 0 0 18px; padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+}
+.login-empresa img { display: block; height: 32px; width: auto; }
 .login-sub { margin: 0 0 20px; font-size: 13.5px; color: var(--muted); }
 .login-foot {
     margin: 18px 0 0; text-align: center; font-size: 12px; color: var(--muted);
@@ -110,6 +116,11 @@ h1 { font-size: 21px; margin: 0; }
 .brand .brand-mark {
     width: 34px; height: 34px; border-radius: 10px;
     background: rgba(255, 255, 255, .16); box-shadow: none;
+}
+.brand-nwt {
+    display: block; height: 15px; width: auto;
+    background: #fff; border-radius: 5px; padding: 3px 6px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
 }
 .nav { display: flex; gap: 5px; flex: 1; flex-wrap: wrap; }
 .nav a {

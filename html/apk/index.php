@@ -46,6 +46,7 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke=
             background: linear-gradient(140deg, var(--brand-2), var(--brand));
             color: #fff; margin-bottom: 16px; box-shadow: 0 6px 18px rgba(13, 59, 102, .30);
         }
+        .empresa { display: block; height: 34px; width: auto; margin: 0 auto 18px; }
         h1 { font-size: 22px; color: var(--brand); margin-bottom: 4px; }
         .sub { color: var(--muted); font-size: 14px; margin-bottom: 22px; }
         .info {
@@ -77,6 +78,7 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke=
 </head>
 <body>
     <main class="card">
+        <img class="empresa" src="/assets/img/nwt-logo.png" alt="NWT Telecom">
         <div class="marca"><?= $svgMarca ?></div>
         <h1>APR/PT</h1>
         <p class="sub">Análise Preliminar de Risco e Permissão de Trabalho</p>
@@ -98,7 +100,7 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke=
         <?php endif; ?>
         <p class="obs">Instale o APK e abra o aplicativo. As atualizações da interface chegam automaticamente; quando publicarmos uma nova versão do app, um aviso aparece na tela.</p>
 
-        <p class="rodape">Segurança do Trabalho · NR-10 e NR-35</p>
+        <p class="rodape">NWT Telecom · Segurança do Trabalho · NR-10 e NR-35</p>
     </main>
 </body>
 </html>

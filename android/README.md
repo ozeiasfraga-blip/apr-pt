@@ -33,6 +33,19 @@ A página de download fica em `http://177.125.60.123:8089/apk/`.
 Ao publicar uma versão nova, incremente **os dois** em `app/build.gradle`:
 `versionCode` (inteiro, sempre maior) e `versionName` (ex.: `1.2.0`).
 
+## Imagens de abertura (NWT)
+
+`splash_nwt.png` (cartão da tela de abertura) e `nwt_marca.png` (selo exibido no
+splash do Android 12+) ficam em `app/src/main/res/drawable-xxhdpi/` e são geradas
+por `tools/gen_splash.php` (PHP + GD), usando a logo em
+`../html/assets/img/nwt-logo.png`:
+
+```bash
+php tools/gen_splash.php
+```
+
+Rode de novo se a logo ou os textos mudarem.
+
 ## Assinatura
 
 - Keystore: `android.keystore` — alias `android`, senha `AprPT@2026` (**não versionada**).

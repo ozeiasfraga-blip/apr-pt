@@ -1,7 +1,8 @@
 <resources>
-    <!-- Android 12+: tela de abertura com a cor da marca e o ícone do app -->
+    <!-- Android 12+: tela de abertura com a cor da marca, o ícone do app e o selo NWT -->
     <style name="Theme.Aprpt" parent="Theme.Aprpt.Base">
         <item name="android:windowSplashScreenBackground">@color/brand</item>
         <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="android:windowSplashScreenBrandingImage">@drawable/nwt_marca</item>
     </style>
 </resources>

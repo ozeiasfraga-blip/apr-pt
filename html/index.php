@@ -21,6 +21,9 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke=
     <!-- ── Login ─────────────────────────────────────────── -->
     <div id="view-login" class="login-wrap">
         <section class="card">
+            <div class="login-empresa">
+                <img src="/assets/img/nwt-logo.png" alt="NWT Telecom">
+            </div>
             <div class="login-head">
                 <span class="brand-mark"><?= $svgMarca ?></span>
                 <div>
@@ -35,7 +38,7 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke=
                 <button type="submit">Entrar</button>
             </form>
             <p id="login-error" class="error"></p>
-            <p class="login-foot">Segurança do Trabalho · NR-10 e NR-35</p>
+            <p class="login-foot">NWT Telecom · Segurança do Trabalho · NR-10 e NR-35</p>
         </section>
     </div>
 
@@ -45,6 +48,7 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke=
             <a class="brand" href="#os">
                 <span class="brand-mark"><?= $svgMarca ?></span>
                 <span><?= $marca ?></span>
+                <img class="brand-nwt" src="/assets/img/nwt-logo.png" alt="NWT Telecom">
             </a>
             <nav id="nav" class="nav">
                 <a href="#os" data-view="os">Ordens de Serviço</a>

@@ -1,8 +1,8 @@
 {
-    "versao": "1.1.0",
-    "versionCode": 2,
+    "versao": "1.2.0",
+    "versionCode": 3,
     "apk": "/apk/app.apk",
-    "tamanho": "49 KB",
+    "tamanho": "125 KB",
     "publicado_em": "2026-10-06",
-    "novidades": "Agora é um app nativo: abre em tela cheia, sem a barra do navegador e sem depender do Chrome."
+    "novidades": "Identidade NWT Telecom: nome do app, tela de abertura, login e barra superior."
 }

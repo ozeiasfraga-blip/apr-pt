@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fundo da abertura: cor da marca + cartão com a logo NWT e "APR/PT" -->
+    <item android:drawable="@color/brand" />
+    <item>
+        <bitmap android:gravity="center" android:src="@drawable/splash_nwt" />
+    </item>
+</layer-list>
