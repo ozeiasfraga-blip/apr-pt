@@ -27,6 +27,9 @@
         if (!n) return '—';
         if (n <= 4) return 'Baixo'; if (n <= 9) return 'Médio'; if (n <= 16) return 'Alto'; return 'Crítico';
     }
+    const NIVEL_CLS = { '—': 'lvl-none', 'Baixo': 'lvl-baixo', 'Médio': 'lvl-medio', 'Alto': 'lvl-alto', 'Crítico': 'lvl-critico' };
+    const nivelCls = (t) => NIVEL_CLS[t] || 'lvl-none';
+    const nivelTexto = (sev, prob) => { const t = nivel(sev, prob); return { texto: t, cls: 'rk-nivel ' + nivelCls(t) }; };
     function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
     // ── UI ──────────────────────────────────────────────────
@@ -46,6 +49,9 @@
         state.user = user;
         $('#view-login').classList.add('hidden'); $('#view-app').classList.remove('hidden');
         $('#user-info').textContent = `${user.name} · ${ROLE_LABEL[user.role] || user.role}`;
+        const iniciais = String(user.name || user.email || '?').trim().split(/\s+/).slice(0, 2)
+            .map((p) => p[0]).join('').toUpperCase();
+        $('#user-avatar').textContent = iniciais || '?';
         $$('#nav a[data-roles]').forEach((a) => a.classList.toggle('hidden', !a.dataset.roles.split(',').includes(user.role)));
         render();
     }
@@ -87,7 +93,7 @@
                     ${STATUS_ORDEM.map((k) => `<option value="${k}">${STATUS_LABEL[k]}</option>`).join('')}
                 </select>
             </div>
-            <div id="os-body"><p class="muted">Carregando…</p></div>`;
+            <div id="os-body"><p class="loading">Carregando…</p></div>`;
 
         const load = async () => {
             try { osCache = await Api.listOs({ date: $('#os-date').value }); fillTecOptions(); applyOsFilters(); }
@@ -167,7 +173,7 @@
                 ${isSupervisor() ? '<select id="d-tec"><option value="">Todos os técnicos</option></select>' : ''}
                 <select id="d-status"><option value="">Todos os status</option>${STATUS_ORDEM.map((k) => `<option value="${k}">${STATUS_LABEL[k]}</option>`).join('')}</select>
             </div>
-            <div id="d-body"><p class="muted">Carregando…</p></div>`;
+            <div id="d-body"><p class="loading">Carregando…</p></div>`;
 
         const resumo = async () => {
             try {
@@ -230,7 +236,7 @@
     // ── View: Formulário APR/PT ─────────────────────────────
     async function renderDocForm(osId) {
         const c = $('#content');
-        c.innerHTML = '<p class="muted">Carregando…</p>';
+        c.innerHTML = '<p class="loading">Carregando…</p>';
         let os, cat;
         try { [os, cat] = await Promise.all([Api.getOs(osId), getCatalogo()]); }
         catch (e) { c.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
@@ -279,7 +285,7 @@
             </div>
 
             <section class="panel">
-                <h2>1. Identificação</h2>
+                <h2><span class="step">1</span>Identificação</h2>
                 <div class="empresa">
                     <strong>${esc(cat.textos.empresa_razao || '')}</strong>
                     <small>CNPJ: ${esc(cat.textos.empresa_cnpj || '')}</small>
@@ -298,7 +304,7 @@
             </section>
 
             <section class="panel">
-                <h2>2. Análise Preliminar de Risco (APR)</h2>
+                <h2><span class="step">2</span>Análise Preliminar de Risco (APR)</h2>
 
                 <div class="field"><span class="label">Normas aplicáveis</span>
                     <div class="chips">${NORMAS.map((n) => `<label class="chip"><input type="checkbox" class="norma" value="${esc(n)}" ${normasSel.has(n) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(n)}</label>`).join('')}</div>
@@ -357,7 +363,7 @@
             </section>
 
             <section class="panel">
-                <h2>3. PT — PERMISSÃO PARA TRABALHO</h2>
+                <h2><span class="step">3</span>PT — Permissão para Trabalho</h2>
                 <div class="termo">${esc(cat.textos.autorizacao_supervisor || '')}</div>
                 <div class="pt-status">
                     <span class="label">Status da Permissão</span>
@@ -377,7 +383,7 @@
             </section>
 
             <section class="panel">
-                <h2>4. ENCERRAMENTO DA PT</h2>
+                <h2><span class="step">4</span>Encerramento da PT</h2>
                 <div class="termo">${esc(cat.textos.declaracao_encerramento || '')}</div>
                 <div class="pt-status">
                     <span class="label">Status do Encerramento</span>
@@ -403,7 +409,9 @@
         $('#doc-voltar').addEventListener('click', () => { location.hash = isSupervisor() ? '#documentos' : '#os'; });
         $$('.rk-sev, .rk-prob').forEach((s) => s.addEventListener('change', (ev) => {
             const tr = ev.target.closest('tr');
-            $('.rk-nivel', tr).textContent = nivel($('.rk-sev', tr).value, $('.rk-prob', tr).value);
+            const nl = $('.rk-nivel', tr);
+            const n = nivelTexto($('.rk-sev', tr).value, $('.rk-prob', tr).value);
+            nl.className = n.cls; nl.textContent = n.texto;
         }));
         $$('.rk-check').forEach((cb) => cb.addEventListener('change', () => preencherRisco(cb.closest('tr'))));
         $$('.norma').forEach((c) => c.addEventListener('change', aplicarNormas));
@@ -481,13 +489,14 @@
         const sev = sel ? (sel.sev ?? 1) : '';
         const prob = sel ? (sel.prob ?? 1) : '';
         const medidas = sel ? (sel.medidas || r.medidas || '') : '';
-        const opcoes = (v) => [1, 2, 3, 4, 5].map((n) => `<option value="${n}" ${Number(v) === n ? 'selected' : ''}>${n}</option>`).join('');
+        const n = nivelTexto(sev, prob);
+        const opcoes = (v) => [1, 2, 3, 4, 5].map((x) => `<option value="${x}" ${Number(v) === x ? 'selected' : ''}>${x}</option>`).join('');
         const dis = readOnly ? 'disabled' : '';
         return `<tr data-codigo="${esc(r.codigo)}" data-perigo="${esc(r.descricao)}" data-nr="${esc(r.nr || '')}" data-categoria="${esc(r.categoria || '')}" data-medida="${esc(r.medidas || '')}" data-sev="${esc(r.severidade || '')}" data-prob="${esc(r.probabilidade || '')}">
             <td><label class="inline"><input type="checkbox" class="rk-check" ${checked} ${dis}> ${esc(r.descricao)}</label></td>
             <td><select class="rk-sev" ${dis}><option value=""></option>${opcoes(sev)}</select></td>
             <td><select class="rk-prob" ${dis}><option value=""></option>${opcoes(prob)}</select></td>
-            <td class="rk-nivel">${sel ? nivel(sev, prob) : '—'}</td>
+            <td class="${n.cls}">${n.texto}</td>
             <td><input class="rk-medidas" value="${esc(medidas)}" ${dis}></td>
         </tr>`;
     }
@@ -496,14 +505,16 @@
     function preencherRisco(tr) {
         const cb = $('.rk-check', tr);
         const sev = $('.rk-sev', tr), prob = $('.rk-prob', tr), med = $('.rk-medidas', tr);
+        const nl = $('.rk-nivel', tr);
         if (cb.checked) {
             if (!sev.value) sev.value = tr.dataset.sev || 1;
             if (!prob.value) prob.value = tr.dataset.prob || 1;
             if (med && !med.value) med.value = tr.dataset.medida || '';
-            $('.rk-nivel', tr).textContent = nivel(sev.value, prob.value);
+            const n = nivelTexto(sev.value, prob.value);
+            nl.className = n.cls; nl.textContent = n.texto;
         } else {
             sev.value = ''; prob.value = ''; if (med) med.value = '';
-            $('.rk-nivel', tr).textContent = '—';
+            nl.className = 'rk-nivel lvl-none'; nl.textContent = '—';
         }
     }
 
@@ -729,7 +740,7 @@
                     <button id="btn-new-user">+ Novo usuário</button>
                 </div>
             </div>
-            <div id="u-body"><p class="muted">Carregando…</p></div>`;
+            <div id="u-body"><p class="loading">Carregando…</p></div>`;
         const load = async () => {
             try {
                 cachedUsers = await Api.listUsers({ search: $('#u-search').value, role: $('#u-role').value });
@@ -870,7 +881,7 @@
 
     async function renderModelo() {
         const c = $('#content');
-        c.innerHTML = '<p class="muted">Carregando…</p>';
+        c.innerHTML = '<p class="loading">Carregando…</p>';
         try { state.modelo = await Api.getModelo(); }
         catch (e) { c.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
 
