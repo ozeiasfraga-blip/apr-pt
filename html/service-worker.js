@@ -1,7 +1,7 @@
 // Service Worker — APR/PT
 // Estratégia: NETWORK-FIRST (busca a versão mais nova primeiro; cai no cache quando offline).
 // Assim ninguém fica preso a uma versão antiga da interface.
-const CACHE = 'aprpt-shell-v28';
+const CACHE = 'aprpt-shell-v29';
 const SHELL = [
     '/',
     '/assets/css/style.css',

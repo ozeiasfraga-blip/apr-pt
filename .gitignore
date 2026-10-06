@@ -21,6 +21,8 @@
 /android/app-release-*.apk
 /android/app-release-*.aab
 /android/*.idsig
+# Casco do app empacotado no APK (gerado por android/tools/sync-web.sh)
+/android/app/src/main/assets/site/
 
 # APK publicado (artefato de build — gerado pelo projeto em /android)
 /html/apk/*.apk

@@ -73,6 +73,10 @@ dos técnicos. Integra-se de forma **somente leitura** ao ERP **IXC Soft** (API 
   e atualize `html/apk/versao.json` (o app avisa os usuários da nova versão).
 - **Keystore:** `android/android.keystore` (alias `android`, senha `AprPT@2026`) —
   **não versionada**. Sem ela o Android recusa atualizar o app instalado.
+- **Offline:** o APK leva uma cópia do casco (HTML/CSS/JS) gerada por
+  `android/tools/sync-web.sh`; OS do dia e catálogo ficam em cache no aparelho e
+  a APR/PT preenchida sem internet entra numa fila, enviada por
+  `POST /api/documentos/sync` quando a conexão volta.
 - O download fica em `http://177.125.60.123:8089/apk/`.
 
 ## Integração IXC (WebService v1)

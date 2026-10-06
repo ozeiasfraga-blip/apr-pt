@@ -9,6 +9,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -19,11 +22,13 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -78,6 +83,28 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 return tratarUrl(request.getUrl().toString());
+            }
+
+            /**
+             * Sem internet: serve o "casco" do app empacotado no APK (assets/site),
+             * para as telas abrirem mesmo sem rede. Com rede, deixa o WebView
+             * buscar normalmente no servidor (sempre a versão mais nova).
+             */
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                if (!"GET".equalsIgnoreCase(request.getMethod())) return null;
+                Uri url = request.getUrl();
+                if (!HOST.equals(url.getHost())) return null;
+                String path = url.getPath() == null ? "/" : url.getPath();
+                if (path.startsWith("/api/") || path.startsWith("/apk")) return null; // sempre rede
+                if (temRede()) return null;              // online: fluxo normal do WebView
+                String asset = assetDoCasco(path);
+                if (asset == null) return null;
+                try {
+                    return new WebResourceResponse(mime(asset), "utf-8", getAssets().open(asset));
+                } catch (IOException e) {
+                    return null;
+                }
             }
 
             @Override
@@ -154,6 +181,42 @@ public class MainActivity extends Activity {
             return true;
         }
         return true; // esquemas desconhecidos: ignora
+    }
+
+    /** Há internet disponível? (sem rede o app usa o casco empacotado no APK) */
+    private boolean temRede() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return true;
+            Network rede = cm.getActiveNetwork();
+            if (rede == null) return false;
+            NetworkCapabilities caps = cm.getNetworkCapabilities(rede);
+            return caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    /** Caminho do recurso dentro do casco empacotado (assets/site) — ou null se não temos cópia. */
+    private String assetDoCasco(String path) {
+        if (path.equals("/") || path.equals("/index.php")) return "site/index.html";
+        if (!path.startsWith("/assets/") && !path.equals("/manifest.webmanifest")) return null;
+        String nome = "site" + path;
+        try {
+            getAssets().open(nome).close();
+            return nome;
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private String mime(String asset) {
+        if (asset.endsWith(".html")) return "text/html";
+        if (asset.endsWith(".css")) return "text/css";
+        if (asset.endsWith(".js")) return "application/javascript";
+        if (asset.endsWith(".png")) return "image/png";
+        if (asset.endsWith(".webmanifest")) return "application/manifest+json";
+        return "text/plain";
     }
 
     private void abrirExterno(Uri uri) {

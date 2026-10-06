@@ -446,6 +446,17 @@
         catch (e) { c.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
 
         const doc = os.documento;
+        if (doc && doc.riscos === undefined) {
+            // Documento existe no servidor, mas só temos a "capa" dele no aparelho
+            c.innerHTML = `
+                <div class="page-head">
+                    <h1>APR / PT — OS #${esc(os.ixc_id || '')}</h1>
+                    <div class="toolbar"><button class="secondary" id="doc-voltar">Voltar</button></div>
+                </div>
+                <p class="muted">Este documento já existe no servidor, mas os dados completos não estão salvos no aparelho. Conecte-se à internet uma vez para abri-lo (depois ele fica disponível offline).</p>`;
+            $('#doc-voltar').addEventListener('click', () => { location.hash = isSupervisor() ? '#documentos' : '#os'; });
+            return;
+        }
         const status = doc?.status || 'rascunho';
         const ehDono = state.user.role === 'tecnico' && Number(state.user.ixc_funcionario_id) === Number(os.id_tecnico);
         const podeEditar = (!doc || status === 'rascunho') && (ehDono || state.user.role === 'admin');

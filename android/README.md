@@ -33,9 +33,7 @@ A página de download fica em `http://177.125.60.123:8089/apk/`.
 Ao publicar uma versão nova, incremente **os dois** em `app/build.gradle`:
 `versionCode` (inteiro, sempre maior) e `versionName` (ex.: `1.2.0`).
 
-## Imagens de abertura (NWT)
-
-`splash_nwt.png` (cartão da tela de abertura) e `nwt_marca.png` (selo exibido no
+## Imagens de abertura (NWT)`splash_nwt.png` (cartão da tela de abertura) e `nwt_marca.png` (selo exibido no
 splash do Android 12+) ficam em `app/src/main/res/drawable-xxhdpi/` e são geradas
 por `tools/gen_splash.php` (PHP + GD), usando a logo em
 `../html/assets/img/nwt-logo.png`:
@@ -45,6 +43,22 @@ php tools/gen_splash.php
 ```
 
 Rode de novo se a logo ou os textos mudarem.
+
+## Modo offline (casco empacotado)
+
+Com internet, o app carrega as telas do servidor. **Sem internet**, ele usa uma
+cópia do sistema (HTML/CSS/JS) empacotada dentro do próprio APK:
+
+- `tools/sync-web.sh` copia `../html/` para `app/src/main/assets/site/` e roda
+  automaticamente antes de cada build (tarefa `syncWeb` do Gradle).
+- O `MainActivity` serve essa cópia quando o aparelho está sem rede.
+- Os dados (OS do dia, catálogo) ficam em cache no aparelho e a APR/PT preenchida
+  offline entra numa fila, enviada sozinha quando a conexão volta
+  (endpoint `POST /api/documentos/sync`).
+
+**Como testar:** abra o app com internet uma vez (para baixar as OS do dia),
+ative o modo avião e use normalmente (preencher, assinar); ao voltar a conexão,
+os documentos pendentes são enviados e aparecem no servidor.
 
 ## Assinatura
 

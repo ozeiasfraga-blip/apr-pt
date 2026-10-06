@@ -10,8 +10,8 @@ android {
         applicationId 'br.net.nwt.aprpt'
         minSdk 24
         targetSdk 34
-        versionCode 3
-        versionName '1.2.0'
+        versionCode 4
+        versionName '1.3.0'
     }
 
     buildFeatures {
@@ -45,3 +45,11 @@ android {
         abortOnError false
     }
 }
+
+// Antes de compilar, atualiza o "casco" do app (HTML/CSS/JS) dentro do APK.
+// É o que permite abrir o app sem internet.
+tasks.register('syncWeb', Exec) {
+    workingDir "${rootDir}"
+    commandLine 'sh', "${rootDir}/tools/sync-web.sh"
+}
+preBuild.dependsOn('syncWeb')
