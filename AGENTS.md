@@ -102,3 +102,7 @@ cd android && ANDROID_HOME=/opt/android-sdk ./gradlew assembleRelease  # Gerar o
 - Projeto **independente** do GeoManager (que fica na raiz de `/var/www`), com git próprio.
 - UI e API em português (pt-BR).
 - Servido via Apache com mod_rewrite (`.htaccess`).
+- A sincronização das OS do IXC roda automaticamente por cron em
+  `/etc/cron.d/aprpt-sync` (a cada 15 minutos; cópia versionada em
+  `scripts/cron.d/aprpt-sync`). Se o cron for perdido, restaure com:
+  `cp scripts/cron.d/aprpt-sync /etc/cron.d/ && chmod 644 /etc/cron.d/aprpt-sync`.

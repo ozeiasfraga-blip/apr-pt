@@ -493,8 +493,9 @@ button.link.danger:hover { background: #fdecec; }
     .grid2 { grid-template-columns: 1fr; }
     .panel { padding: 17px 15px; }
     .topbar { padding: 8px 12px; gap: 10px; }
-    .nav { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
-    .nav a { white-space: nowrap; }
+    /* Navegação em linha própria, quebrando em linhas: nada fica escondido */
+    .nav { order: 3; width: 100%; flex: 1 1 100%; flex-wrap: wrap; }
+    .nav a { white-space: nowrap; padding: 7px 11px; font-size: 13.5px; }
     .grid { min-width: 620px; }
     .sticky-actions { margin: 4px -6px 0; }
     .sticky-actions button, .sticky-actions .btn-link { flex: 1 1 auto; }

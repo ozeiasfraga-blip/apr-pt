@@ -1,0 +1,2 @@
+# APR/PT — sincroniza as OS do IXC a cada 15 minutos
+0,15,30,45 * * * * root /usr/bin/php /var/www/apr-pt/scripts/sync_os.php >> /var/log/aprpt-sync.log 2>&1
