@@ -25,11 +25,18 @@ const Api = (() => {
         const token = getToken();
         if (token) headers['Authorization'] = 'Bearer ' + token;
 
-        const res = await fetch(BASE + path, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : undefined,
-        });
+        let res;
+        try {
+            res = await fetch(BASE + path, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined,
+            });
+        } catch (_) {
+            const err = new Error('Sem conexão com o servidor.');
+            err.offline = true;
+            throw err;
+        }
 
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data.success === false) {
@@ -86,6 +93,7 @@ const Api = (() => {
         getDocumento: (id) => request('GET', '/documentos/' + id),
         resumoDocumentos: () => request('GET', '/documentos/resumo'),
         saveDocumento: (d) => request('POST', '/documentos', d),
+        syncDocumento: (pacote) => request('POST', '/documentos/sync', pacote),
         assinarDocumento: (id, dados) => request('POST', `/documentos/${id}/assinar`, dados),
         aprovarDocumento: (id, dados) => request('POST', `/documentos/${id}/aprovar`, dados),
         encerrarDocumento: (id, dados) => request('POST', `/documentos/${id}/encerrar`, dados),

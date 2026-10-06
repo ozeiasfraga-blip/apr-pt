@@ -79,6 +79,7 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke=
 
     <div id="toast" class="toast hidden"></div>
 
+    <script src="/assets/js/offline.js?v=<?= @filemtime(__DIR__ . '/assets/js/offline.js') ?>"></script>
     <script src="/assets/js/api.js?v=<?= @filemtime(__DIR__ . '/assets/js/api.js') ?>"></script>
     <script src="/assets/js/app.js?v=<?= @filemtime(__DIR__ . '/assets/js/app.js') ?>"></script>
     <script>

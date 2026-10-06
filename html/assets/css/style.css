@@ -343,6 +343,15 @@ button.link.danger:hover { background: #fdecec; }
     .apk-banner-acoes .btn-link, .apk-banner-acoes button.secondary { flex: 1 1 auto; text-align: center; }
 }
 
+/* ── Barra do modo offline ──────────────────────────────── */
+.offline-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    background: #fff7ed; border: 1px solid #fed7aa; border-left: 4px solid #d97706;
+    color: #7c2d12; border-radius: var(--radius); padding: 10px 14px; margin-bottom: 14px;
+    font-size: 13.5px; box-shadow: var(--shadow-xs);
+}
+.offline-bar button { flex: none; }
+
 /* ── Estados vazios / carregando ────────────────────────── */
 #login-error:empty { display: none; }
 #os-body > p, #d-body > p, #u-body > p, #modelo-body > p, #content > p.loading, #content > p.error {

@@ -100,12 +100,24 @@
         });
     }
 
-    async function getCatalogo() { if (!state.catalogo) state.catalogo = await Api.catalogo(); return state.catalogo; }
+    async function getCatalogo() {
+        if (state.catalogo) return state.catalogo;
+        try {
+            state.catalogo = await Api.catalogo();
+            Offline.gravarCatalogo(state.catalogo);
+        } catch (e) {
+            const salvo = Offline.catalogo();
+            if (!salvo) throw e;                 // sem cópia no aparelho: propaga o erro
+            state.catalogo = salvo;
+        }
+        return state.catalogo;
+    }
 
     // ── Autenticação ────────────────────────────────────────
     function showLogin() { $('#view-login').classList.remove('hidden'); $('#view-app').classList.add('hidden'); location.hash = ''; }
     function showApp(user) {
         state.user = user;
+        Offline.gravarSessao(user);
         $('#view-login').classList.add('hidden'); $('#view-app').classList.remove('hidden');
         $('#user-info').textContent = `${user.name} · ${ROLE_LABEL[user.role] || user.role}`;
         const iniciais = String(user.name || user.email || '?').trim().split(/\s+/).slice(0, 2)
@@ -114,6 +126,7 @@
         $$('#nav a[data-roles]').forEach((a) => a.classList.toggle('hidden', !a.dataset.roles.split(',').includes(user.role)));
         render();
         verificarAtualizacaoApp();
+        sincronizarPendentes();      // envia o que ficou guardado de outra sessão
     }
 
     // ── Roteador ────────────────────────────────────────────
@@ -121,13 +134,89 @@
         const hash = (location.hash || '#os').replace('#', '');
         const [view, param] = hash.split('/');
         $$('#nav a').forEach((a) => a.classList.toggle('active', a.dataset.view === view));
-        setTimeout(exibirBannerSeNecessario, 0);
+        setTimeout(atualizarAvisos, 0);
 
         if (view === 'usuarios') { if (!isSupervisor()) { location.hash = '#os'; return; } return renderUsuarios(); }
         if (view === 'modelo') { if (!isSupervisor()) { location.hash = '#os'; return; } return renderModelo(); }
         if (view === 'documentos') return renderDocumentos();
         if (view === 'doc') return renderDocForm(param);
         return renderOs();
+    }
+
+    // ── Modo offline (dados salvos no aparelho) ─────────────
+    function atualizarAvisos() {
+        desenharBarraOffline();
+        exibirBannerSeNecessario();
+    }
+
+    // Recoloca os documentos locais sobre a lista de OS (status/ações corretos)
+    function aplicarDocsLocais() {
+        osCache.forEach((o) => {
+            const local = Offline.docDoOs(o.id);
+            if (local && (local.pendente || !o.documento)) {
+                o.documento = { id: local.id || null, uuid: local.uuid, status: local.status, local: true };
+            }
+        });
+    }
+
+    // Guarda no aparelho o detalhe das OS do dia (para abrir sem internet)
+    async function preBuscarDetalhes() {
+        if (state.user?.role !== 'tecnico') return;
+        const fila = osCache.filter((o) => !Offline.osDetalhe(o.id)).slice(0, 60);
+        for (const o of fila) {
+            if (!navigator.onLine) break;
+            try { Offline.gravarOsDetalhe(o.id, await Api.getOs(o.id)); } catch (_) { break; }
+        }
+    }
+
+    // Envia ao servidor os documentos preenchidos sem internet
+    async function sincronizarPendentes(silencioso = true) {
+        const pendentes = Offline.docsPendentes();
+        if (!pendentes.length || !navigator.onLine) {
+            desenharBarraOffline();
+            return 0;
+        }
+        let enviados = 0;
+        for (const local of pendentes) {
+            try {
+                const salvo = await Api.syncDocumento(Offline.pacote(local));
+                Offline.concluir(local.uuid, salvo);
+                enviados++;
+            } catch (e) {
+                if (e.offline) break;            // sem rede: tenta de novo depois
+                console.warn('Falha ao enviar documento offline:', local.uuid, e.message);
+                break;                           // erro de dados: não insiste em loop
+            }
+        }
+        if (enviados) {
+            if (!silencioso) toast(`${enviados} documento(s) enviado(s) ao servidor.`);
+            render();
+        } else {
+            desenharBarraOffline();
+        }
+        return enviados;
+    }
+
+    // Barra de aviso: sem conexão / documentos aguardando envio
+    function desenharBarraOffline() {
+        const host = $('#content');
+        if (!host) return;
+        let bar = $('#offline-bar');
+        const semRede = !navigator.onLine;
+        const pend = Offline.contarPendentes();
+        if (!semRede && !pend) { if (bar) bar.remove(); return; }
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'offline-bar';
+            bar.className = 'offline-bar';
+            host.prepend(bar);
+        }
+        bar.innerHTML = `<span>${semRede
+            ? 'Sem conexão — você está usando os dados salvos no aparelho.'
+            : `${pend} documento(s) aguardando envio ao servidor.`}</span>`
+            + (!semRede && pend ? ' <button type="button" class="secondary small" id="off-sync">Enviar agora</button>' : '');
+        const btn = $('#off-sync', bar);
+        if (btn) btn.addEventListener('click', () => sincronizarPendentes(false));
     }
 
     // ── View: Ordens de Serviço ─────────────────────────────
@@ -157,8 +246,27 @@
             <div id="os-body"><p class="loading">Carregando…</p></div>`;
 
         const load = async () => {
-            try { osCache = await Api.listOs({ date: $('#os-date').value }); fillTecOptions(); applyOsFilters(); }
-            catch (e) { $('#os-body').innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+            const data = $('#os-date').value;
+            try {
+                osCache = await Api.listOs({ date: data });
+                Offline.gravarOsLista(data, osCache);
+                aplicarDocsLocais();
+                fillTecOptions(); applyOsFilters();
+                desenharBarraOffline();
+                preBuscarDetalhes();
+            } catch (e) {
+                if (e.offline) {
+                    osCache = Offline.osLista(data);
+                    aplicarDocsLocais();
+                    fillTecOptions(); applyOsFilters();
+                    desenharBarraOffline();
+                    if (!osCache.length) {
+                        $('#os-body').innerHTML = '<p class="muted">Sem conexão e sem OS salvas para esta data.</p>';
+                    }
+                    return;
+                }
+                $('#os-body').innerHTML = `<p class="error">${esc(e.message)}</p>`;
+            }
         };
         if (isSupervisor()) $('#btn-sync').addEventListener('click', async () => {
             toast('Sincronizando com o IXC…');
@@ -321,7 +429,20 @@
         const c = $('#content');
         c.innerHTML = '<p class="loading">Carregando…</p>';
         let os, cat;
-        try { [os, cat] = await Promise.all([Api.getOs(osId), getCatalogo()]); }
+        try {
+            os = await Api.getOs(osId);
+            Offline.gravarOsDetalhe(osId, os);
+        } catch (e) {
+            if (!e.offline) { c.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
+            os = Offline.osDetalhe(osId) || (osCache || []).find((o) => String(o.id) === String(osId));
+            if (!os) {
+                c.innerHTML = '<p class="error">Esta OS não está salva no aparelho. Conecte-se à internet uma vez para abri-la.</p>';
+                return;
+            }
+        }
+        const local = Offline.docDoOs(os.id);
+        if (local) os.documento = local;          // documento guardado no aparelho tem prioridade
+        try { cat = await getCatalogo(); }
         catch (e) { c.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
 
         const doc = os.documento;
@@ -332,7 +453,11 @@
         const podeEncerrar = isSupervisor() && ['liberada', 'em_execucao'].includes(status);
         const readOnly = !podeEditar;
         const sigs = {}; toArr(doc?.assinaturas).forEach((a) => { sigs[a.tipo] = a; });
-        const sigImg = (t) => (sigs[t]?.imagem_path ? `<img src="/api/arquivo?p=${encodeURIComponent(sigs[t].imagem_path)}" style="height:58px">` : '<span class="muted">—</span>');
+        const sigImg = (t) => {
+            const s = sigs[t];
+            const src = s?.imagem_base64 || (s?.imagem_path ? `/api/arquivo?p=${encodeURIComponent(s.imagem_path)}` : '');
+            return src ? `<img src="${src}" style="height:58px">` : '<span class="muted">—</span>';
+        };
         const autPT = doc?.pt_autorizacao || '';
         const encPT = doc?.pt_encerramento_status || '';
         const fmtData = (v) => (v ? String(v).slice(0, 10).split('-').reverse().join('/') : '—');
@@ -362,7 +487,7 @@
                 <h1>APR / PT — OS #${esc(os.ixc_id)}</h1>
                 <div class="toolbar">
                     <span class="tag tag-${status}">${STATUS_LABEL[status] || status}</span>
-                    ${doc ? `<a class="btn-link" target="_blank" href="/api/documentos/${doc.id}/pdf">PDF</a>` : ''}
+                    ${doc?.id ? `<a class="btn-link" target="_blank" href="/api/documentos/${doc.id}/pdf">PDF</a>` : ''}
                     <button class="secondary" id="doc-voltar">Voltar</button>
                 </div>
             </div>
@@ -540,8 +665,8 @@
 
         if (podeEditar) {
             $('#btn-rascunho').addEventListener('click', async () => {
-                const id = await salvar(coletar(os, doc));
-                if (id) render(); // recarrega o formulário para reutilizar o mesmo documento/uuid
+                const r = await salvar(coletar(os, doc));
+                if (r) render(); // recarrega o formulário para reutilizar o mesmo documento/uuid
             });
             $('#btn-assinar').addEventListener('click', async () => {
                 const payload = coletar(os, doc);
@@ -549,14 +674,31 @@
                 if (erro) { toast(erro, true); return; }
                 const sig = await askSignature('Assinatura do técnico');
                 if (!sig) return;
-                const id = await salvar(payload, true);
-                if (!id) return;
+                const r = await salvar(payload, true);
+                if (!r) return;
+                if (r.offline) {
+                    Offline.assinarLocal(r.uuid, { imagem_base64: sig, dispositivo: navigator.userAgent });
+                    toast('Sem conexão — assinado no aparelho. Será enviado quando houver internet.');
+                    location.hash = '#documentos';
+                    render();
+                    return;
+                }
                 try {
-                    await Api.assinarDocumento(id, { imagem_base64: sig, dispositivo: navigator.userAgent });
+                    await Api.assinarDocumento(r.id, { imagem_base64: sig, dispositivo: navigator.userAgent });
                     toast('Assinado. Aguardando aprovação do supervisor.');
                     location.hash = '#documentos';
                     render();
-                } catch (e) { toast(e.message, true); }
+                } catch (e) {
+                    if (e.offline) {
+                        Offline.salvarLocal(payload.os_id, payload, { uuid: r.uuid });
+                        Offline.assinarLocal(r.uuid, { imagem_base64: sig, dispositivo: navigator.userAgent });
+                        toast('Sem conexão — assinado no aparelho. Será enviado quando houver internet.');
+                        location.hash = '#documentos';
+                        render();
+                        return;
+                    }
+                    toast(e.message, true);
+                }
             });
         }
         if (podeLiberar) {
@@ -677,6 +819,9 @@
         return {
             uuid: doc?.uuid || uid(), os_id: os.id, status: 'rascunho',
             tecnico_id: os.tecnico_user_id || null,
+            validade_inicio: doc?.validade_inicio || Offline.agora(),
+            validade_fim: doc?.validade_fim || Offline.somaHoras(doc?.validade_inicio || Offline.agora(),
+                state.catalogo?.textos?.validade_horas || 8),
             nr35: normas.includes('NR-35'), nr10: normas.includes('NR-10'),
             normas, riscos, epis, epcs, checklist,
             ferramentas: $$('.ferramenta:checked').map((x) => x.value),
@@ -709,11 +854,20 @@
     }
 
     async function salvar(payload, silencioso = false) {
-        try {
-            const saved = await Api.saveDocumento(payload);
-            if (!silencioso) toast('Rascunho salvo.');
-            return saved.id;
-        } catch (e) { toast(e.message, true); return null; }
+        if (navigator.onLine) {
+            try {
+                const saved = await Api.saveDocumento(payload);
+                if (!silencioso) toast('Rascunho salvo.');
+                return { id: saved.id, uuid: saved.uuid || payload.uuid, offline: false };
+            } catch (e) {
+                if (!e.offline) { toast(e.message, true); return null; }
+            }
+        }
+        // Sem internet: guarda no aparelho e deixa na fila de envio
+        const local = Offline.salvarLocal(payload.os_id, payload);
+        if (!silencioso) toast('Sem conexão — rascunho salvo no aparelho.');
+        desenharBarraOffline();
+        return { id: local.id || null, uuid: local.uuid, offline: true };
     }
 
     function liberarModal(doc) {
@@ -735,18 +889,35 @@
         $('#lib-ok').addEventListener('click', async () => {
             const aut = document.querySelector('input[name=pt_aut]:checked')?.value || 'AUTORIZADA';
             if (!pad.desenhou) { toast('Assine antes de confirmar.', true); return; }
+            const dados = {
+                pt_autorizacao: aut,
+                pt_supervisor_nome: $('#lib-nome').value.trim(),
+                pt_supervisor_registro: $('#lib-reg').value.trim(),
+                imagem_base64: pad.dataURL(),
+                dispositivo: navigator.userAgent,
+            };
+            if (!doc.id || !navigator.onLine) {
+                Offline.aprovarLocal(doc.uuid, dados);
+                closeModal();
+                toast('PT assinada no aparelho — será enviada quando houver internet.');
+                render();
+                return;
+            }
             try {
-                await Api.aprovarDocumento(doc.id, {
-                    pt_autorizacao: aut,
-                    pt_supervisor_nome: $('#lib-nome').value.trim(),
-                    pt_supervisor_registro: $('#lib-reg').value.trim(),
-                    imagem_base64: pad.dataURL(),
-                    dispositivo: navigator.userAgent,
-                });
+                await Api.aprovarDocumento(doc.id, dados);
                 closeModal();
                 toast(aut === 'AUTORIZADA' ? 'PT autorizada.' : 'PT NÃO autorizada.');
                 render();
-            } catch (e) { toast(e.message, true); }
+            } catch (e) {
+                if (e.offline) {
+                    Offline.aprovarLocal(doc.uuid, dados);
+                    closeModal();
+                    toast('Sem conexão — PT assinada no aparelho e será enviada depois.');
+                    render();
+                    return;
+                }
+                toast(e.message, true);
+            }
         });
     }
 
@@ -768,17 +939,34 @@
         $('#enc-ok').addEventListener('click', async () => {
             const st = document.querySelector('input[name=pt_enc]:checked')?.value || 'CONCLUIDO';
             if (!pad.desenhou) { toast('Assine antes de confirmar.', true); return; }
+            const dados = {
+                pt_encerramento_status: st,
+                encerramento_obs: $('#enc-obs').value.trim(),
+                imagem_base64: pad.dataURL(),
+                dispositivo: navigator.userAgent,
+            };
+            if (!doc.id || !navigator.onLine) {
+                Offline.encerrarLocal(doc.uuid, dados);
+                closeModal();
+                toast('Encerramento assinado no aparelho — será enviado quando houver internet.');
+                render();
+                return;
+            }
             try {
-                await Api.encerrarDocumento(doc.id, {
-                    pt_encerramento_status: st,
-                    encerramento_obs: $('#enc-obs').value.trim(),
-                    imagem_base64: pad.dataURL(),
-                    dispositivo: navigator.userAgent,
-                });
+                await Api.encerrarDocumento(doc.id, dados);
                 closeModal();
                 toast(st === 'CONCLUIDO' ? 'PT encerrada com sucesso.' : 'PT encerrada como suspensa/cancelada.');
                 render();
-            } catch (e) { toast(e.message, true); }
+            } catch (e) {
+                if (e.offline) {
+                    Offline.encerrarLocal(doc.uuid, dados);
+                    closeModal();
+                    toast('Sem conexão — encerramento assinado no aparelho e será enviado depois.');
+                    render();
+                    return;
+                }
+                toast(e.message, true);
+            }
         });
     }
 
@@ -1065,13 +1253,25 @@
         const f = new FormData(ev.target);
         try { showApp(await Api.login(f.get('email'), f.get('password'))); } catch (e) { $('#login-error').textContent = e.message; }
     });
-    $('#btn-logout').addEventListener('click', async () => { await Api.logout(); showLogin(); });
+    $('#btn-logout').addEventListener('click', async () => { await Api.logout(); Offline.gravarSessao(null); showLogin(); });
     $('#modal-close').addEventListener('click', closeModal);
     $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
     window.addEventListener('hashchange', render);
 
+    // Reconexão: envia o que ficou pendente e recarrega os dados
+    window.addEventListener('online', () => { sincronizarPendentes(); render(); });
+    window.addEventListener('offline', () => atualizarAvisos());
+    setInterval(() => { if (navigator.onLine && Offline.contarPendentes()) sincronizarPendentes(); }, 60000);
+
     (async () => {
         if (!Api.isAuthenticated()) return showLogin();
-        try { showApp(await Api.me()); } catch { Api.clear(); showLogin(); }
+        try { showApp(await Api.me()); }
+        catch (e) {
+            if (e.offline) {
+                const salvo = Offline.sessao();
+                if (salvo && salvo.id) return showApp(salvo);   // abre com os dados do aparelho
+            }
+            Api.clear(); showLogin();
+        }
     })();
 })();
