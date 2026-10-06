@@ -268,6 +268,13 @@ class DocumentoSst
         $stmt->execute([$hash, $id]);
     }
 
+    /** Preserva a data/hora em que o documento foi criado no aparelho (preenchimento offline). */
+    public static function setCriadoEm(int $id, string $quando): void
+    {
+        $stmt = Database::getInstance()->prepare('UPDATE documentos_sst SET created_at = ? WHERE id = ?');
+        $stmt->execute([$quando, $id]);
+    }
+
     /**
      * Gera um hash encadeado (integridade do documento) a partir do conteúdo relevante.
      */

@@ -68,6 +68,7 @@ route('GET', '/api/catalogo', [\App\Controllers\CatalogoController::class, 'inde
 route('GET', '/api/documentos', [\App\Controllers\DocumentoSstController::class, 'index']);
 route('GET', '/api/documentos/resumo', [\App\Controllers\DocumentoSstController::class, 'resumo']);
 route('POST', '/api/documentos', [\App\Controllers\DocumentoSstController::class, 'store']);
+route('POST', '/api/documentos/sync', [\App\Controllers\DocumentoSstController::class, 'sincronizar']);
 route('GET', '/api/documentos/{id}', [\App\Controllers\DocumentoSstController::class, 'show']);
 route('POST', '/api/documentos/{id}/assinar', [\App\Controllers\DocumentoSstController::class, 'assinar']);
 route('POST', '/api/documentos/{id}/aprovar', [\App\Controllers\DocumentoSstController::class, 'aprovar']);

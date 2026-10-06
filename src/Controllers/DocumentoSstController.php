@@ -401,6 +401,277 @@ class DocumentoSstController
         exit;
     }
 
+    /**
+     * POST /api/documentos/sync
+     *
+     * Recebe um documento preenchido no aparelho (mesmo sem internet) e aplica
+     * tudo no servidor de forma idempotente: a chave é o `uuid` gerado no app,
+     * então o mesmo documento pode ser reenviado sem duplicar.
+     */
+    public static function sincronizar(): void
+    {
+        $authUser = Middleware::requireAuth();
+        $data = json_decode(file_get_contents('php://input'), true) ?? [];
+
+        $uuid = trim((string)($data['uuid'] ?? ''));
+        $osId = (int)($data['os_id'] ?? 0);
+        if ($uuid === '' || $osId <= 0) {
+            Response::error('Dados inválidos (uuid/os_id).', 422);
+        }
+
+        $os = OrdemServico::getById($osId);
+        if (!$os) {
+            Response::error('OS não encontrada no servidor. Sincronize as ordens do IXC antes de enviar.', 409);
+        }
+
+        // Quem é o técnico responsável pelo documento
+        if ($authUser->role === 'tecnico') {
+            if ((int)$os['id_tecnico'] !== (int)($authUser->ixc_funcionario_id ?? 0)) {
+                Response::error('Acesso negado a esta OS.', 403);
+            }
+            $tecnicoId = (int)$authUser->user_id;
+        } else {
+            $tecnicoId = (int)($data['tecnico_id'] ?? 0);
+            if ($tecnicoId <= 0 && !empty($os['id_tecnico'])) {
+                $tecnicoUser = User::getByIxcId((int)$os['id_tecnico']);
+                $tecnicoId = $tecnicoUser ? (int)$tecnicoUser['id'] : 0;
+            }
+            if ($tecnicoId <= 0) {
+                Response::error('Não foi possível identificar o técnico desta OS.', 422);
+            }
+        }
+
+        $campos = is_array($data['campos'] ?? null) ? $data['campos'] : [];
+        $status = (string)($data['status'] ?? 'rascunho');
+        if (!in_array($status, ['rascunho', 'aguardando_aprovacao', 'liberada', 'em_execucao', 'encerrada', 'cancelada'], true)) {
+            $status = 'rascunho';
+        }
+
+        // Validade: mantém a do aparelho (preenchimento offline); senão calcula agora
+        if (empty($campos['validade_inicio'])) {
+            $campos['validade_inicio'] = date('Y-m-d H:i:s');
+        }
+        if (empty($campos['validade_fim'])) {
+            $horas = 8;
+            try {
+                $stmt = \App\Database::getInstance()->prepare("SELECT valor FROM config_textos WHERE chave = 'validade_horas'");
+                $stmt->execute();
+                $h = $stmt->fetchColumn();
+                if ($h !== false && $h !== null && $h !== '') {
+                    $horas = (int)$h;
+                }
+            } catch (\Throwable $e) {}
+            $campos['validade_fim'] = date('Y-m-d H:i:s', strtotime($campos['validade_inicio'] . " +{$horas} hours"));
+        }
+
+        $id = DocumentoSst::createOrUpdateByUuid([
+            'uuid' => $uuid,
+            'os_id' => $osId,
+            'tecnico_id' => $tecnicoId,
+            'status' => $status,
+            'nr10' => $campos['nr10'] ?? false,
+            'nr35' => $campos['nr35'] ?? false,
+            'normas' => $campos['normas'] ?? null,
+            'riscos' => $campos['riscos'] ?? null,
+            'epis' => $campos['epis'] ?? null,
+            'epcs' => $campos['epcs'] ?? null,
+            'checklist' => $campos['checklist'] ?? null,
+            'ferramentas' => $campos['ferramentas'] ?? null,
+            'medidas' => $campos['medidas'] ?? null,
+            'restricoes' => $campos['restricoes'] ?? null,
+            'treinamento_nr10' => $campos['treinamento_nr10'] ?? false,
+            'treinamento_nr35' => $campos['treinamento_nr35'] ?? false,
+            'aso_apto' => $campos['aso_apto'] ?? false,
+            'atividades' => $campos['atividades'] ?? null,
+            'local_atividade' => $campos['local_atividade'] ?? null,
+            'responsavel_apr' => $campos['responsavel_apr'] ?? null,
+            'equipe_envolvida' => $campos['equipe_envolvida'] ?? null,
+            'etapas' => $campos['etapas'] ?? null,
+            'observacoes' => $campos['observacoes'] ?? null,
+            'validade_inicio' => $campos['validade_inicio'],
+            'validade_fim' => $campos['validade_fim'],
+        ]);
+
+        // Preserva a data/hora em que o documento foi criado no aparelho
+        $criadoEm = self::dataHoraCliente($data['criado_em'] ?? null);
+        if ($criadoEm) {
+            DocumentoSst::setCriadoEm($id, $criadoEm);
+        }
+
+        // Equipe envolvida + assinaturas dos integrantes
+        if (isset($data['equipe']) && is_array($data['equipe'])) {
+            DocumentoSst::limparEquipe($id);
+            foreach (array_values($data['equipe']) as $i => $m) {
+                $path = null;
+                if (!empty($m['assinatura_base64'])) {
+                    $path = StorageService::saveBase64Image($m['assinatura_base64'], 'assinaturas', 'eq' . $id . '_' . ($i + 1));
+                } elseif (!empty($m['assinatura_path'])) {
+                    $path = $m['assinatura_path'];
+                }
+                DocumentoSst::addEquipe($id, $i + 1, $m['nome'] ?? null, $m['funcao'] ?? null, $m['cpf'] ?? null, $path);
+            }
+        }
+
+        // Assinaturas na ordem em que aconteceram no aparelho (cada tipo só entra uma vez)
+        foreach ((array)($data['assinaturas'] ?? []) as $a) {
+            if (!is_array($a)) continue;
+            $tipo = (string)($a['tipo'] ?? '');
+            if (!in_array($tipo, ['tecnico', 'supervisor', 'supervisor_encerramento'], true)) continue;
+
+            $doc = DocumentoSst::getById($id);
+            if (!$doc || Assinatura::existe($id, $tipo)) continue;
+            if ($tipo !== 'tecnico' && !in_array($authUser->role, ['supervisor', 'admin'], true)) {
+                Response::error('Somente supervisor pode enviar a assinatura de ' . $tipo . '.', 403);
+            }
+            self::aplicarAssinaturaOffline($id, $doc, $tipo, $a, $authUser);
+        }
+
+        // Garante o status que o aparelho mostrava (sem retroceder etapas concluídas)
+        $doc = DocumentoSst::getById($id);
+        if ($doc && $doc['status'] !== $status && !in_array($doc['status'], ['encerrada', 'cancelada'], true)) {
+            DocumentoSst::updateStatus($id, $status);
+        }
+
+        DocumentoSst::setHash($id, DocumentoSst::calcularHash(DocumentoSst::getById($id)));
+
+        Log::create([
+            'user_id' => $authUser->user_id,
+            'acao' => 'documento_sync_offline',
+            'entidade' => 'documentos_sst',
+            'entidade_id' => $id,
+            'detalhes' => ['uuid' => $uuid, 'status' => $status, 'assinaturas' => count((array)($data['assinaturas'] ?? []))],
+            'ip' => Middleware::clientIp(),
+        ]);
+
+        Response::success(DocumentoSst::getById($id), 'Documento sincronizado.');
+    }
+
+    /** Aplica uma assinatura feita sem internet (mesmas regras dos endpoints online). */
+    private static function aplicarAssinaturaOffline(int $id, array $doc, string $tipo, array $a, object $authUser): void
+    {
+        $quando = self::dataHoraCliente($a['criado_em'] ?? null);
+        $dispositivo = $a['dispositivo'] ?? null;
+
+        if ($tipo === 'tecnico') {
+            $path = StorageService::saveBase64Image($a['imagem_base64'] ?? null, 'assinaturas', 'tec_' . $doc['uuid']);
+            $hash = DocumentoSst::calcularHash(array_merge($doc, ['assinatura_tecnico' => (string)time()]));
+            $assinatura = Assinatura::create([
+                'documento_id' => $id,
+                'tipo' => 'tecnico',
+                'user_id' => (int)$authUser->user_id,
+                'imagem_path' => $path,
+                'ip' => Middleware::clientIp(),
+                'latitude' => $a['latitude'] ?? null,
+                'longitude' => $a['longitude'] ?? null,
+                'dispositivo' => $dispositivo,
+                'hash' => $hash,
+            ]);
+            if ($quando) {
+                Assinatura::setAssinadoEm($assinatura, $quando);
+            }
+            DocumentoSst::setHash($id, $hash);
+            DocumentoSst::updateStatus($id, 'aguardando_aprovacao');
+            return;
+        }
+
+        if ($tipo === 'supervisor') {
+            $autorizacao = strtoupper((string)($a['pt_autorizacao'] ?? 'AUTORIZADA'));
+            if (!in_array($autorizacao, ['AUTORIZADA', 'NAO_AUTORIZADA'], true)) {
+                $autorizacao = 'AUTORIZADA';
+            }
+            $emissor = User::getById((int)$authUser->user_id);
+            $nome = trim((string)($a['pt_supervisor_nome'] ?? '')) ?: ($emissor['name'] ?? null);
+            $registro = trim((string)($a['pt_supervisor_registro'] ?? '')) ?: null;
+
+            $path = StorageService::saveBase64Image($a['imagem_base64'] ?? null, 'assinaturas', 'sup_' . $doc['uuid']);
+            $assinatura = Assinatura::create([
+                'documento_id' => $id,
+                'tipo' => 'supervisor',
+                'user_id' => (int)$authUser->user_id,
+                'imagem_path' => $path,
+                'ip' => Middleware::clientIp(),
+                'latitude' => $a['latitude'] ?? null,
+                'longitude' => $a['longitude'] ?? null,
+                'dispositivo' => $dispositivo,
+            ]);
+            if ($quando) {
+                Assinatura::setAssinadoEm($assinatura, $quando);
+            }
+
+            DocumentoSst::setSupervisor($id, (int)$authUser->user_id);
+            DocumentoSst::setPtLiberacao($id, $autorizacao, $nome, $registro);
+            DocumentoSst::updateStatus($id, $autorizacao === 'AUTORIZADA' ? 'liberada' : 'cancelada');
+
+            $doc['supervisor_id'] = (int)$authUser->user_id;
+            DocumentoSst::setHash($id, DocumentoSst::calcularHash($doc));
+
+            try {
+                $pdfPath = PdfService::gerarDocumento(DocumentoSst::getById($id));
+                DocumentoSst::setPdfPath($id, $pdfPath);
+            } catch (\Throwable $e) {
+                error_log('Falha ao gerar PDF (sync) do documento ' . $id . ': ' . $e->getMessage());
+            }
+            return;
+        }
+
+        // supervisor_encerramento
+        $ptStatus = strtoupper((string)($a['pt_encerramento_status'] ?? 'CONCLUIDO'));
+        if (!in_array($ptStatus, ['CONCLUIDO', 'SUSPENSO'], true)) {
+            $ptStatus = 'CONCLUIDO';
+        }
+        $path = StorageService::saveBase64Image($a['imagem_base64'] ?? null, 'assinaturas', 'supenc_' . $doc['uuid']);
+        $assinatura = Assinatura::create([
+            'documento_id' => $id,
+            'tipo' => 'supervisor_encerramento',
+            'user_id' => (int)$authUser->user_id,
+            'imagem_path' => $path,
+            'ip' => Middleware::clientIp(),
+            'latitude' => $a['latitude'] ?? null,
+            'longitude' => $a['longitude'] ?? null,
+            'dispositivo' => $dispositivo,
+        ]);
+        if ($quando) {
+            Assinatura::setAssinadoEm($assinatura, $quando);
+        }
+
+        $concluido = $ptStatus === 'CONCLUIDO';
+        DocumentoSst::marcarEncerrado(
+            $id,
+            $concluido ? 1 : 0,
+            $a['encerramento_obs'] ?? null,
+            $ptStatus,
+            $concluido ? 'encerrada' : 'cancelada'
+        );
+
+        try {
+            $pdfPath = PdfService::gerarDocumento(DocumentoSst::getById($id));
+            DocumentoSst::setPdfPath($id, $pdfPath);
+        } catch (\Throwable $e) {
+            error_log('Falha ao gerar PDF (sync) do documento ' . $id . ': ' . $e->getMessage());
+        }
+    }
+
+    /** Aceita "YYYY-MM-DD HH:MM:SS" vindo do aparelho, com limites de sanidade. */
+    private static function dataHoraCliente($valor): ?string
+    {
+        $valor = trim((string)$valor);
+        if ($valor === '') {
+            return null;
+        }
+        $ts = strtotime($valor);
+        if ($ts === false) {
+            return null;
+        }
+        $agora = time();
+        if ($ts > $agora + 300) {          // no máximo 5 minutos no futuro
+            return null;
+        }
+        if ($ts < $agora - 60 * 86400) {   // no máximo 60 dias para trás
+            return null;
+        }
+        return date('Y-m-d H:i:s', $ts);
+    }
+
     private static function autorizar(object $authUser, array $doc): void
     {
         if ($authUser->role === 'tecnico' && (int)$doc['tecnico_id'] !== (int)$authUser->user_id) {

@@ -49,4 +49,11 @@ class Assinatura
         $stmt->execute([$documentoId, $tipo]);
         return (bool)$stmt->fetch();
     }
+
+    /** Preserva a data/hora em que a assinatura foi feita no aparelho (offline). */
+    public static function setAssinadoEm(int $id, string $quando): void
+    {
+        $stmt = Database::getInstance()->prepare('UPDATE assinaturas SET assinado_em = ? WHERE id = ?');
+        $stmt->execute([$quando, $id]);
+    }
 }
