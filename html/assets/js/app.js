@@ -12,7 +12,7 @@
         liberada: 'Liberada', em_execucao: 'Em execução', encerrada: 'Encerrada', cancelada: 'Cancelada',
     };
     const OS_STATUS = { A: 'Aberta', AN: 'Análise', EN: 'Encaminhada', AS: 'Assumida', AG: 'Agendada', DS: 'Deslocamento', EX: 'Execução', F: 'Finalizada', RAG: 'Aguard. agendamento' };
-    const NORMAS = ['NR-35', 'NR-10', 'NR-33', 'NR-18', 'Via pública', 'Outros'];
+    const NORMAS = ['NR-35', 'NR-10', 'Via pública', 'Outros'];
 
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => (
         { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]

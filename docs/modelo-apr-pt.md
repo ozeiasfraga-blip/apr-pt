@@ -70,8 +70,6 @@ Campo de texto livre (o que será executado).
 Seleção múltipla:
 - ☐ **NR-35** — Trabalho em altura
 - ☐ **NR-10** — Serviços em eletricidade
-- ☐ **NR-33** — Espaço confinado
-- ☐ **NR-18** — Construção (quando aplicável)
 - ☐ Sinalização de via pública
 - ☐ Outros
 
