@@ -13,11 +13,12 @@ require_once __DIR__ . '/../src/bootstrap.php';
 use App\Database;
 use App\Models\DocumentoSst;
 use App\Services\DriveService;
+use App\Services\RcloneService;
 use App\Services\PdfService;
 use App\Services\StorageService;
 
-if (!DriveService::configurado()) {
-    fwrite(STDERR, "Drive não configurado: preencha GOOGLE_DRIVE_FOLDER_ID no .env e coloque a credencial em " . (DriveService::credPath() ?? '?') . PHP_EOL);
+if (!DriveService::configurado() && !RcloneService::configurado()) {
+    fwrite(STDERR, "Nuvem não configurada: conta de serviço (GOOGLE_DRIVE_*) ou rclone (RCLONE_*) no .env" . PHP_EOL);
     exit(1);
 }
 
@@ -38,7 +39,8 @@ foreach ($docs as $doc) {
         $rel = (!empty($doc['pdf_path']) && is_file(StorageService::absolute($doc['pdf_path'])))
             ? $doc['pdf_path']
             : PdfService::gerarDocumento($doc);
-        $id = DriveService::enviarPdf(StorageService::absolute($rel), basename($rel), (string)$doc['uuid']);
+        $id = DriveService::enviarPdf(StorageService::absolute($rel), basename($rel), (string)$doc['uuid'])
+            ?? RcloneService::enviarPdf(StorageService::absolute($rel), basename($rel), (string)$doc['uuid']);
         if ($id) {
             DocumentoSst::setPdfDriveId((int)$doc['id'], $id);
             echo "doc {$doc['id']} ({$doc['uuid']}): enviado ($id)" . PHP_EOL;

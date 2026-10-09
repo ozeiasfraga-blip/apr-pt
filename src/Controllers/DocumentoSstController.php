@@ -10,6 +10,7 @@ use App\Models\Log;
 use App\Services\StorageService;
 use App\Services\PdfService;
 use App\Services\DriveService;
+use App\Services\RcloneService;
 use App\Helpers\Response;
 use App\Helpers\Validator;
 use App\Middleware;
@@ -355,14 +356,19 @@ class DocumentoSstController
         try {
             $pdfPath = PdfService::gerarDocumento(DocumentoSst::getById((int)$doc['id']));
             DocumentoSst::setPdfPath((int)$doc['id'], $pdfPath);
-            // Segunda cópia: Google Drive (ignora silenciosamente se não configurado)
-            $driveId = DriveService::enviarPdf(
+            // Segunda cópia na nuvem: conta de serviço ou rclone (Drive/Dropbox).
+            // Ignora silenciosamente se nada estiver configurado.
+            $nuvemId = DriveService::enviarPdf(
+                StorageService::absolute($pdfPath),
+                basename($pdfPath),
+                (string)$doc['uuid']
+            ) ?? RcloneService::enviarPdf(
                 StorageService::absolute($pdfPath),
                 basename($pdfPath),
                 (string)$doc['uuid']
             );
-            if ($driveId) {
-                DocumentoSst::setPdfDriveId((int)$doc['id'], $driveId);
+            if ($nuvemId) {
+                DocumentoSst::setPdfDriveId((int)$doc['id'], $nuvemId);
             }
         } catch (\Throwable $e) {
             error_log('Falha ao gerar PDF no encerramento ' . $doc['id'] . ': ' . $e->getMessage());

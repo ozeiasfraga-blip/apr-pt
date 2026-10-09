@@ -78,13 +78,15 @@ Supervisor enxerga somente técnicos na lista de usuários (`UserController`
 força o filtro) e usa a lista de funcionários do IXC só para vincular o
 técnico novo. A trava é no backend (`requireAdmin`); o frontend só esconde.
 
-## Segunda cópia do PDF (Google Drive)
+## Segunda cópia do PDF (nuvem)
 
-- Ao **encerrar a PT**, o PDF final sobe para a pasta do Drive
-  (`DriveService::enviarPdf`, conta de serviço) e o ID fica em
+- Ao **encerrar a PT**, o PDF final sobe para a nuvem e o identificador fica em
   `documentos_sst.pdf_drive_id`. Reencerrar atualiza o mesmo arquivo.
-- Config: `GOOGLE_DRIVE_CREDENTIALS` (JSON da conta de serviço, em
-  `storage/credentials/`, **nunca versionar**) + `GOOGLE_DRIVE_FOLDER_ID`.
+- Backends (tenta nesta ordem): conta de serviço (`DriveService`, Google) e
+  rclone (`RcloneService`: Drive/Dropbox/OneDrive via `rclone authorize` no PC).
+- rclone: `RCLONE_BIN/CONFIG/REMOTE/DIR` no .env; remote configurado em
+  `storage/credentials/rclone.conf` (**nunca versionar**). O rclone renova o
+  acesso sozinho; o mesmo nome de arquivo sobrescreve (sem duplicar).
 - Sem config, o envio é ignorado e nada quebra.
 - Backfill: `php scripts/enviar_drive.php` (só as que faltam) ou
   `php scripts/enviar_drive.php --all` (reenvia todas as encerradas).
