@@ -12,7 +12,7 @@ class CatalogoAdminController
     private const TIPOS = [
         'riscos' => [
             'tabela' => 'catalogo_riscos',
-            'campos' => ['codigo', 'categoria', 'nr', 'descricao', 'fonte', 'consequencia', 'medidas', 'ordem', 'ativo'],
+            'campos' => ['codigo', 'categoria', 'nr', 'descricao', 'fonte', 'consequencia', 'medidas', 'ferramentas', 'ordem', 'ativo'],
             'obrigatorios' => ['descricao'],
         ],
         'epis' => [
@@ -28,6 +28,11 @@ class CatalogoAdminController
         'checklist' => [
             'tabela' => 'catalogo_checklist',
             'campos' => ['codigo', 'descricao', 'grupo', 'nr', 'critico', 'ordem', 'ativo'],
+            'obrigatorios' => ['descricao'],
+        ],
+        'ferramentas' => [
+            'tabela' => 'catalogo_ferramentas',
+            'campos' => ['codigo', 'descricao', 'nr', 'padrao', 'ordem', 'ativo'],
             'obrigatorios' => ['descricao'],
         ],
     ];

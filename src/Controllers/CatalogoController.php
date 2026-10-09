@@ -18,7 +18,7 @@ class CatalogoController
         $db = Database::getInstance();
 
         $riscos = $db->query(
-            'SELECT codigo, categoria, nr, descricao, fonte, consequencia, medidas, severidade, probabilidade
+            'SELECT codigo, categoria, nr, descricao, fonte, consequencia, medidas, ferramentas, severidade, probabilidade
              FROM catalogo_riscos WHERE ativo = 1
              ORDER BY categoria, ordem, id'
         )->fetchAll();
@@ -32,7 +32,7 @@ class CatalogoController
         )->fetchAll();
 
         $ferramentas = $db->query(
-            'SELECT codigo, descricao, ordem FROM catalogo_ferramentas WHERE ativo = 1 ORDER BY ordem, id'
+            'SELECT codigo, descricao, padrao, ordem FROM catalogo_ferramentas WHERE ativo = 1 ORDER BY ordem, id'
         )->fetchAll();
 
         $checklist = $db->query(

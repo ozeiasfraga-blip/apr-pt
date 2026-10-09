@@ -13,6 +13,7 @@
     };
     const OS_STATUS = { A: 'Aberta', AN: 'Análise', EN: 'Encaminhada', AS: 'Assumida', AG: 'Agendada', DS: 'Deslocamento', EX: 'Execução', F: 'Finalizada', RAG: 'Aguard. agendamento' };
     const NORMAS = ['NR-35', 'NR-10', 'Via pública', 'Outros'];
+    let cfgFerramentasMin = 0; // mínimo de ferramentas exigido para assinar (config_textos)
 
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => (
         { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
@@ -480,6 +481,8 @@
         toArr(doc?.checklist).forEach((i) => { chkSel[i.codigo || i.descricao] = i.resposta; });
         const normasSel = new Set(toArr(doc?.normas).length ? toArr(doc?.normas) : [doc?.nr35 ? 'NR-35' : null, doc?.nr10 ? 'NR-10' : null].filter(Boolean));
         const ferrSel = new Set(toArr(doc?.ferramentas));
+        cfgFerramentasMin = Number(cat.textos.ferramentas_minimas) || 0;
+        if (!doc && !readOnly) cat.ferramentas.filter((x) => Number(x.padrao)).forEach((x) => ferrSel.add(x.descricao));
         const gruposRiscos = [];
         cat.riscos.forEach((r) => {
             const nome = r.categoria || 'OUTROS';
@@ -531,7 +534,8 @@
                 </div>
 
                 <span class="label">Ferramentas Utilizadas</span>
-                <div class="checks">${cat.ferramentas.map((x) => `<label class="chip"><input type="checkbox" class="ferramenta" value="${esc(x.descricao)}" ${ferrSel.has(x.descricao) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(x.descricao)}</label>`).join('')}</div>
+                <div class="checks">${cat.ferramentas.map((x) => `<label class="chip"><input type="checkbox" class="ferramenta" data-codigo="${esc(x.codigo)}" value="${esc(x.descricao)}" ${ferrSel.has(x.descricao) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(x.descricao)}</label>`).join('')}</div>
+                <small class="muted" id="ferr-ajuda"></small>
 
                 <span class="label">EPIs e EPCs Obrigatórios</span>
                 <div class="checks">${cat.epis.map((x) => `<label class="chip"><input type="checkbox" class="epi" data-nr="${esc(x.nr || '')}" value="${esc(x.descricao)}" ${episSel.has(x.descricao) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(x.descricao)}</label>`).join('')}</div>
@@ -633,7 +637,10 @@
             const n = nivelTexto($('.rk-sev', tr).value, $('.rk-prob', tr).value);
             nl.className = n.cls; nl.textContent = n.texto;
         }));
-        $$('.rk-check').forEach((cb) => cb.addEventListener('change', () => preencherRisco(cb.closest('tr'))));
+        $$('.rk-check').forEach((cb) => cb.addEventListener('change', () => { preencherRisco(cb.closest('tr')); aplicarFerramentas(); }));
+        $$('.ferramenta').forEach((cb) => cb.addEventListener('change', atualizaFerramentasUI));
+        aplicarFerramentas();   // risco já marcado traz a ferramenta associada
+        atualizaFerramentasUI(); // contador e mínimo exigido
         $$('.norma').forEach((c) => c.addEventListener('change', aplicarNormas));
         travarTreinamentos(); // treinamentos/ASO: preenche e trava ao abrir o formulário
 
@@ -730,7 +737,7 @@
         const n = nivelTexto(sev, prob);
         const opcoes = (v) => [1, 2, 3, 4, 5].map((x) => `<option value="${x}" ${Number(v) === x ? 'selected' : ''}>${x}</option>`).join('');
         const dis = readOnly ? 'disabled' : '';
-        return `<tr data-codigo="${esc(r.codigo)}" data-perigo="${esc(r.descricao)}" data-nr="${esc(r.nr || '')}" data-categoria="${esc(r.categoria || '')}" data-medida="${esc(r.medidas || '')}" data-sev="${esc(r.severidade || '')}" data-prob="${esc(r.probabilidade || '')}">
+        return `<tr data-codigo="${esc(r.codigo)}" data-perigo="${esc(r.descricao)}" data-nr="${esc(r.nr || '')}" data-ferramentas="${esc(r.ferramentas || '')}" data-categoria="${esc(r.categoria || '')}" data-medida="${esc(r.medidas || '')}" data-sev="${esc(r.severidade || '')}" data-prob="${esc(r.probabilidade || '')}">
             <td><label class="inline"><input type="checkbox" class="rk-check" ${checked} ${dis}> ${esc(r.descricao)}</label></td>
             <td><select class="rk-sev" ${dis}><option value=""></option>${opcoes(sev)}</select></td>
             <td><select class="rk-prob" ${dis}><option value=""></option>${opcoes(prob)}</select></td>
@@ -767,6 +774,33 @@
     const itemTemNr = (valor, selecionadas) => String(valor || '')
         .split(',').map((s) => s.trim()).filter(Boolean)
         .some((n) => selecionadas.includes(n));
+
+    // Ferramenta associada a um risco marcado (ex.: Animais peçonhentos → Facão):
+    // só acrescenta — nunca desmarca o que o técnico escolheu.
+    function aplicarFerramentas() {
+        const trechos = [];
+        $$('tr[data-codigo]').forEach((tr) => {
+            const cb = $('.rk-check', tr);
+            if (cb && cb.checked && tr.dataset.ferramentas) trechos.push(tr.dataset.ferramentas);
+        });
+        if (trechos.length) {
+            const quero = trechos.join(',').split(',').map((s) => s.trim()).filter(Boolean);
+            $$('.ferramenta').forEach((cb) => {
+                if (!cb.disabled && quero.includes(cb.dataset.codigo)) cb.checked = true;
+            });
+        }
+        atualizaFerramentasUI();
+    }
+
+    // Contador de ferramentas + mínimo exigido para assinar
+    function atualizaFerramentasUI() {
+        const el = $('#ferr-ajuda');
+        if (!el) return;
+        const n = $$('.ferramenta:checked').length;
+        if (!cfgFerramentasMin) { el.textContent = `Marcadas: ${n}.`; return; }
+        const marca = n < cfgFerramentasMin ? '⚠ ' : '';
+        el.textContent = `${marca}Marcadas: ${n} — mínimo para assinar: ${cfgFerramentasMin}.`;
+    }
 
     // Treinamentos/ASO: vêm marcados quando há NR selecionada e ficam TRAVADOS —
     // o técnico não consegue desmarcar. Em modo leitura não mexe (já vem travado
@@ -811,6 +845,9 @@
 
         // Validade dos treinamentos / habilitação — preenchidos e travados
         travarTreinamentos(normas);
+
+        // Risco marcado pela NR leva a ferramenta associada junto
+        aplicarFerramentas();
 
         toast(normas.length ? `Campos de ${normas.join(', ')} marcados automaticamente.` : 'NRs desmarcadas — itens automáticos limpos.');
     }
@@ -884,6 +921,9 @@
         // Exige a LUVA isolante (a botina também é isolante, mas não substitui a luva)
         if (payload.normas.includes('NR-10') && !payload.epis.some((e) => /luva/i.test(e) && /isolante/i.test(e))) {
             return 'NR-10: marque a Luva isolante nos EPIs.';
+        }
+        if (cfgFerramentasMin > 0 && payload.ferramentas.length < cfgFerramentasMin) {
+            return `Ferramentas: marque pelo menos ${cfgFerramentasMin} itens (você marcou ${payload.ferramentas.length}).`;
         }
         return null;
     }
@@ -1144,6 +1184,7 @@
                 { k: 'fonte', l: 'Fonte geradora', t: 'text' },
                 { k: 'consequencia', l: 'Consequência', t: 'text' },
                 { k: 'medidas', l: 'Medidas de controle (sugestão)', t: 'textarea' },
+                { k: 'ferramentas', l: 'Ferramentas associadas (marca automática)', t: 'ferramentas' },
                 { k: 'ordem', l: 'Ordem', t: 'number' },
                 { k: 'ativo', l: 'Ativo', t: 'bool' },
             ],
@@ -1160,12 +1201,23 @@
             ],
         },
         epcs: {
-            label: 'EPCs / Ferramentas',
+            label: 'EPCs',
             colunas: ['descricao', 'nr', 'ordem', 'ativo'],
             campos: [
                 { k: 'codigo', l: 'Código', t: 'text' },
                 { k: 'descricao', l: 'Descrição', t: 'text', req: true },
                 { k: 'nr', l: 'Normas (marcação automática)', t: 'nr' },
+                { k: 'ordem', l: 'Ordem', t: 'number' },
+                { k: 'ativo', l: 'Ativo', t: 'bool' },
+            ],
+        },
+        ferramentas: {
+            label: 'Ferramentas',
+            colunas: ['codigo', 'descricao', 'padrao', 'ordem', 'ativo'],
+            campos: [
+                { k: 'codigo', l: 'Código', t: 'text' },
+                { k: 'descricao', l: 'Descrição', t: 'text', req: true },
+                { k: 'padrao', l: 'Pré-marcar (sempre usada em documento novo)', t: 'bool' },
                 { k: 'ordem', l: 'Ordem', t: 'number' },
                 { k: 'ativo', l: 'Ativo', t: 'bool' },
             ],
@@ -1191,7 +1243,7 @@
         try { state.modelo = await Api.getModelo(); }
         catch (e) { c.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
 
-        const abas = ['riscos', 'epis', 'epcs', 'checklist', 'textos'];
+        const abas = ['riscos', 'epis', 'epcs', 'ferramentas', 'checklist', 'textos'];
         const labels = { ...Object.fromEntries(Object.entries(MODELO_DEFS).map(([k, v]) => [k, v.label])), textos: 'Textos' };
         c.innerHTML = `
             <div class="page-head"><h1>Modelo APR/PT</h1><span class="muted">Catálogo editável usado na tela do técnico</span></div>
@@ -1224,7 +1276,7 @@
 
     function campoLabel(def, k) { const c = def.campos.find((x) => x.k === k); return c ? c.l : k; }
     function celula(v, c) {
-        if (['ativo', 'critico'].includes(c)) return Number(v) ? 'Sim' : 'Não';
+        if (['ativo', 'critico', 'padrao'].includes(c)) return Number(v) ? 'Sim' : 'Não';
         if (c === 'nr' && v) return esc(String(v).split(',').map((s) => s.trim()).join(' · '));
         return esc(v ?? '');
     }
@@ -1239,6 +1291,12 @@
                 const opcoes = [...NORMAS, ...atuais.filter((a) => !NORMAS.includes(a))];
                 return `<span class="label">${esc(c.l)}</span>
                     <div class="checks">${opcoes.map((n) => `<label class="chip"><input type="checkbox" name="${c.k}" value="${esc(n)}" ${atuais.includes(n) ? 'checked' : ''}> ${esc(n)}</label>`).join('')}</div>`;
+            }
+            if (c.t === 'ferramentas') {
+                const atuais = String(v || '').split(',').map((s) => s.trim()).filter(Boolean);
+                const ops = state.modelo.listas.ferramentas || [];
+                return `<span class="label">${esc(c.l)}</span>
+                    <div class="checks">${ops.map((f) => `<label class="chip"><input type="checkbox" name="${c.k}" value="${esc(f.codigo)}" ${atuais.includes(f.codigo) ? 'checked' : ''}> ${esc(f.descricao)}</label>`).join('')}</div>`;
             }
             if (c.t === 'bool') return `<label class="inline"><input type="checkbox" name="${c.k}" ${Number(v) ? 'checked' : ''}> ${esc(c.l)}</label>`;
             if (c.t === 'textarea') return `<label>${esc(c.l)}<textarea name="${c.k}" rows="3">${esc(v)}</textarea></label>`;
@@ -1255,7 +1313,7 @@
             const f = new FormData(ev.target);
             const payload = {};
             def.campos.forEach((c) => {
-                if (c.t === 'nr') { payload[c.k] = f.getAll(c.k).join(','); return; }
+                if (c.t === 'nr' || c.t === 'ferramentas') { payload[c.k] = f.getAll(c.k).join(','); return; }
                 payload[c.k] = c.t === 'bool' ? (f.get(c.k) ? 1 : 0) : (c.t === 'number' ? (+f.get(c.k) || 0) : (f.get(c.k) || '').trim());
             });
             try {

@@ -114,3 +114,8 @@ cd android && ANDROID_HOME=/opt/android-sdk ./gradlew assembleRelease  # Gerar o
   `catalogo_checklist`) aceitam **várias NRs** na coluna `nr`, separadas por
   vírgula (ex.: `NR-10,NR-35`). O formulário marca o item quando **qualquer uma**
   das normas dele estiver selecionada.
+- Ferramentas: `catalogo_ferramentas.padrao = 1` vem **pré-marcada** em documento
+  novo; cada risco pode apontar `ferramentas` (códigos, ex.: Animais peçonhentos →
+  `FR-20`) e a ferramenta é marcada junto quando o risco é marcado (só acrescenta,
+  nunca desmarca); o **mínimo para assinar** fica em
+  `config_textos.ferramentas_minimas` (editável em Modelo APR/PT → Textos).
