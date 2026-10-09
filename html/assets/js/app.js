@@ -598,7 +598,7 @@
                 </div>
                 <div class="grid2">
                     <div><span class="label">Nome do Supervisor / Emissor</span><div>${esc(doc?.pt_supervisor_nome || '—')}</div></div>
-                    <div><span class="label">Registro / Cargo</span><div>${esc(doc?.pt_supervisor_registro || '—')}</div></div>
+                    <div><span class="label">Cargo / Registro</span><div>${esc(doc?.pt_supervisor_registro || '—')}</div></div>
                 </div>
                 <div class="grid2">
                     <div><span class="label">Assinatura do Supervisor</span><div>${sigImg('supervisor')}</div></div>
@@ -963,6 +963,14 @@
         return { id: local.id || null, uuid: local.uuid, offline: true };
     }
 
+    // Cargos do supervisor/emissor (config_textos.cargos_supervisor, lista por vírgula).
+    // Editável em Modelo APR/PT → Textos — novos cargos aparecem na autorização.
+    function cargosSupervisor() {
+        const txt = state.catalogo?.textos?.cargos_supervisor || '';
+        const lista = String(txt).split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+        return lista.length ? lista : ['Supervisor de Campo', 'Fiscal de Campo'];
+    }
+
     function liberarModal(doc) {
         openModal('Autorizar PT — Supervisor / Emissor', `
             <p class="muted">${esc(state.catalogo?.textos?.autorizacao_supervisor || '')}</p>
@@ -970,7 +978,11 @@
             <label class="inline"><input type="radio" name="pt_aut" value="AUTORIZADA" checked> <strong>AUTORIZADA</strong></label>
             <label class="inline"><input type="radio" name="pt_aut" value="NAO_AUTORIZADA"> <strong style="color:var(--danger)">NÃO AUTORIZADA</strong></label>
             <label>Nome do Supervisor / Emissor<input type="text" id="lib-nome" value="${esc(state.user.name || '')}"></label>
-            <label>Registro / Cargo<input type="text" id="lib-reg" placeholder="Ex.: Supervisor de Campo / CREA"></label>
+            <label>Cargo do Supervisor / Emissor (obrigatório)<select id="lib-cargo">
+                <option value="">— Selecione o cargo —</option>
+                ${cargosSupervisor().map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+            </select></label>
+            <label>Registro (opcional)<input type="text" id="lib-reg" placeholder="Ex.: CREA 12345"></label>
             <span class="label">Assinatura do supervisor</span>
             <canvas id="lib-sig" class="sig-canvas" width="480" height="200"></canvas>
             <div class="form-actions">
@@ -982,10 +994,13 @@
         $('#lib-ok').addEventListener('click', async () => {
             const aut = document.querySelector('input[name=pt_aut]:checked')?.value || 'AUTORIZADA';
             if (!pad.desenhou) { toast('Assine antes de confirmar.', true); return; }
+            const cargo = $('#lib-cargo').value;
+            if (!cargo) { toast('Selecione o cargo do supervisor para autorizar a PT.', true); return; }
+            const reg = $('#lib-reg').value.trim();
             const dados = {
                 pt_autorizacao: aut,
                 pt_supervisor_nome: $('#lib-nome').value.trim(),
-                pt_supervisor_registro: $('#lib-reg').value.trim(),
+                pt_supervisor_registro: reg ? cargo + ' / ' + reg : cargo,
                 imagem_base64: pad.dataURL(),
                 dispositivo: navigator.userAgent,
             };

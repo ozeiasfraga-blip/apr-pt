@@ -252,6 +252,9 @@ class DocumentoSstController
         $emissor = User::getById((int)$authUser->user_id);
         $nome = trim((string)($data['pt_supervisor_nome'] ?? '')) ?: ($emissor['name'] ?? null);
         $registro = trim((string)($data['pt_supervisor_registro'] ?? '')) ?: null;
+        if (!$registro) {
+            Response::error('Selecione o cargo do supervisor/emissor para autorizar a PT.', 422);
+        }
 
         $imagemPath = StorageService::saveBase64Image(
             $data['imagem_base64'] ?? null,
@@ -582,6 +585,9 @@ class DocumentoSstController
             $emissor = User::getById((int)$authUser->user_id);
             $nome = trim((string)($a['pt_supervisor_nome'] ?? '')) ?: ($emissor['name'] ?? null);
             $registro = trim((string)($a['pt_supervisor_registro'] ?? '')) ?: null;
+            if (!$registro) {
+                Response::error('Selecione o cargo do supervisor/emissor para autorizar a PT.', 422);
+            }
 
             $path = StorageService::saveBase64Image($a['imagem_base64'] ?? null, 'assinaturas', 'sup_' . $doc['uuid']);
             $assinatura = Assinatura::create([
