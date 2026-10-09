@@ -13,10 +13,11 @@ class UserController
     /** GET /api/users?role=&ativo=&search= */
     public static function index(): void
     {
-        Middleware::requireSupervisor();
+        $auth = Middleware::requireSupervisor();
         $users = User::getAll();
 
-        $role = $_GET['role'] ?? null;
+        // Supervisor enxerga somente técnicos
+        $role = Middleware::isAdmin($auth) ? ($_GET['role'] ?? null) : 'tecnico';
         $search = $_GET['search'] ?? null;
 
         if ($role) {
@@ -45,6 +46,11 @@ class UserController
         $v->inList($data, 'role', ['tecnico', 'supervisor', 'admin']);
         if (!$v->passes()) {
             Response::error('Dados inválidos.', 422, $v->errors());
+        }
+
+        // Supervisor só pode criar técnico
+        if (!Middleware::isAdmin($auth) && $data['role'] !== 'tecnico') {
+            Response::error('Supervisores só podem criar usuários técnicos.', 403);
         }
 
         // Somente admin pode criar outro admin
@@ -84,10 +90,10 @@ class UserController
         Response::success(User::getById($id), 'Usuário criado com sucesso.', 201);
     }
 
-    /** PUT /api/users/{id} */
+    /** PUT /api/users/{id} — somente admin (supervisor só cria técnico). */
     public static function update(string $id): void
     {
-        $auth = Middleware::requireSupervisor();
+        $auth = Middleware::requireAdmin();
         $userId = (int)$id;
         $user = User::getById($userId);
         if (!$user) {
@@ -146,10 +152,10 @@ class UserController
         Response::success(User::getById($userId), 'Usuário atualizado.');
     }
 
-    /** POST /api/users/{id}/senha */
+    /** POST /api/users/{id}/senha — somente admin. */
     public static function resetPassword(string $id): void
     {
-        $auth = Middleware::requireSupervisor();
+        $auth = Middleware::requireAdmin();
         $userId = (int)$id;
         $user = User::getById($userId);
         if (!$user) {
@@ -178,10 +184,10 @@ class UserController
         Response::success(null, 'Senha redefinida com sucesso.');
     }
 
-    /** DELETE /api/users/{id} */
+    /** DELETE /api/users/{id} — somente admin. */
     public static function destroy(string $id): void
     {
-        $auth = Middleware::requireSupervisor();
+        $auth = Middleware::requireAdmin();
         $userId = (int)$id;
         $user = User::getById($userId);
         if (!$user) {

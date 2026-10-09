@@ -40,7 +40,7 @@ class CatalogoAdminController
     /** GET /api/modelo — tudo (inclusive inativos) + textos, para edição. */
     public static function index(): void
     {
-        Middleware::requireSupervisor();
+        Middleware::requireAdmin();
         $db = Database::getInstance();
 
         $listas = [];
@@ -59,7 +59,7 @@ class CatalogoAdminController
     /** POST /api/modelo/{tipo} */
     public static function create(string $tipo): void
     {
-        Middleware::requireSupervisor();
+        Middleware::requireAdmin();
         $cfg = self::cfg($tipo);
         $data = json_decode(file_get_contents('php://input'), true) ?? [];
 
@@ -92,7 +92,7 @@ class CatalogoAdminController
     /** PUT /api/modelo/{tipo}/{id} */
     public static function update(string $tipo, string $id): void
     {
-        Middleware::requireSupervisor();
+        Middleware::requireAdmin();
         $cfg = self::cfg($tipo);
         $data = json_decode(file_get_contents('php://input'), true) ?? [];
 
@@ -120,7 +120,7 @@ class CatalogoAdminController
     /** DELETE /api/modelo/{tipo}/{id} */
     public static function destroy(string $tipo, string $id): void
     {
-        Middleware::requireSupervisor();
+        Middleware::requireAdmin();
         $cfg = self::cfg($tipo);
         $stmt = Database::getInstance()->prepare("DELETE FROM {$cfg['tabela']} WHERE id = ?");
         $stmt->execute([(int)$id]);
@@ -130,7 +130,7 @@ class CatalogoAdminController
     /** PUT /api/modelo/textos — { chave: valor, ... } */
     public static function saveTextos(): void
     {
-        Middleware::requireSupervisor();
+        Middleware::requireAdmin();
         $data = json_decode(file_get_contents('php://input'), true) ?? [];
         $db = Database::getInstance();
         $stmt = $db->prepare('UPDATE config_textos SET valor = ? WHERE chave = ?');

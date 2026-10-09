@@ -62,6 +62,22 @@ dos técnicos. Integra-se de forma **somente leitura** ao ERP **IXC Soft** (API 
 | `android/README.md` | Como gerar e publicar o APK |
 | `html/apk/versao.json` | Versão publicada do APK (usada pelo aviso de atualização) |
 
+## Níveis de acesso
+
+| Função | Técnico | Supervisor | Admin |
+|---|---|---|---|
+| Ver OS e APR/PT, preencher e assinar | próprias | todas | todas |
+| Autorizar (liberar) e encerrar PT | — | ✅ | ✅ |
+| Criar usuário **técnico** | — | ✅ | ✅ |
+| Editar, redefinir senha ou excluir usuários | — | — | ✅ |
+| Criar supervisor / mexer em admin | — | — | ✅ |
+| Modelo APR/PT (catálogo e textos) | — | — | ✅ |
+| Sincronização manual do IXC | — | — | ✅ |
+
+Supervisor enxerga somente técnicos na lista de usuários (`UserController`
+força o filtro) e usa a lista de funcionários do IXC só para vincular o
+técnico novo. A trava é no backend (`requireAdmin`); o frontend só esconde.
+
 ## App Android (APK)
 
 - Projeto em `android/`: app nativo com WebView própria que carrega

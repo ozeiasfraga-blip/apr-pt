@@ -19,6 +19,7 @@
         { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
     ));
     const isSupervisor = () => ['supervisor', 'admin'].includes(state.user?.role);
+    const isAdmin = () => state.user?.role === 'admin';
     const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
         const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
     }));
@@ -138,7 +139,7 @@
         setTimeout(atualizarAvisos, 0);
 
         if (view === 'usuarios') { if (!isSupervisor()) { location.hash = '#os'; return; } return renderUsuarios(); }
-        if (view === 'modelo') { if (!isSupervisor()) { location.hash = '#os'; return; } return renderModelo(); }
+        if (view === 'modelo') { if (!isAdmin()) { location.hash = '#os'; return; } return renderModelo(); }
         if (view === 'documentos') return renderDocumentos();
         if (view === 'doc') return renderDocForm(param);
         return renderOs();
@@ -231,7 +232,7 @@
                 <div class="toolbar">
                     <input type="date" id="os-date" value="${localDate()}">
                     <button id="btn-hoje" class="secondary">Hoje</button>
-                    ${isSupervisor() ? '<button id="btn-sync">Sincronizar IXC</button>' : ''}
+                    ${isAdmin() ? '<button id="btn-sync">Sincronizar IXC</button>' : ''}
                 </div>
             </div>
             <div class="filters">
@@ -269,7 +270,7 @@
                 $('#os-body').innerHTML = `<p class="error">${esc(e.message)}</p>`;
             }
         };
-        if (isSupervisor()) $('#btn-sync').addEventListener('click', async () => {
+        if (isAdmin()) $('#btn-sync').addEventListener('click', async () => {
             toast('Sincronizando com o IXC…');
             try { const r = await Api.syncOs($('#os-date').value); toast(`Sincronizadas ${r.sincronizadas} de ${r.total} OS.`); load(); }
             catch (e) { toast(e.message, true); }
@@ -1105,24 +1106,25 @@
     let cachedUsers = [];
     async function renderUsuarios() {
         const c = $('#content');
+        const admin = isAdmin();
         c.innerHTML = `
             <div class="page-head">
                 <h1>Usuários</h1>
                 <div class="toolbar">
                     <input type="search" id="u-search" placeholder="Buscar nome ou e-mail">
-                    <select id="u-role">
+                    ${admin ? `<select id="u-role">
                         <option value="">Todos os perfis</option>
                         <option value="tecnico">Técnico</option>
                         <option value="supervisor">Supervisor</option>
                         <option value="admin">Administrador</option>
-                    </select>
+                    </select>` : ''}
                     <button id="btn-new-user">+ Novo usuário</button>
                 </div>
             </div>
             <div id="u-body"><p class="loading">Carregando…</p></div>`;
         const load = async () => {
             try {
-                cachedUsers = await Api.listUsers({ search: $('#u-search').value, role: $('#u-role').value });
+                cachedUsers = await Api.listUsers({ search: $('#u-search').value, role: $('#u-role')?.value || '' });
                 $('#u-body').innerHTML = cachedUsers.length ? `<table class="grid">
                     <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Func. IXC</th><th>Ativo</th><th></th></tr></thead>
                     <tbody>${cachedUsers.map(rowUser).join('')}</tbody></table>` : '<p class="muted">Nenhum usuário encontrado.</p>';
@@ -1131,7 +1133,7 @@
         };
         $('#btn-new-user').addEventListener('click', () => userForm(null));
         $('#u-search').addEventListener('input', debounce(load, 300));
-        $('#u-role').addEventListener('change', load);
+        $('#u-role')?.addEventListener('change', load);
         load();
     }
     function rowUser(u) {
@@ -1140,7 +1142,7 @@
             <td><span class="tag role-${u.role}">${ROLE_LABEL[u.role] || u.role}</span></td>
             <td>${u.ixc_funcionario_id ?? '<span class="muted">—</span>'}</td>
             <td>${Number(u.ativo) ? 'Sim' : 'Não'}</td>
-            <td class="acoes"><button class="link" data-edit="${u.id}">Editar</button> <button class="link" data-pass="${u.id}">Senha</button> <button class="link danger" data-del="${u.id}">Excluir</button></td>
+            <td class="acoes">${isAdmin() ? `<button class="link" data-edit="${u.id}">Editar</button> <button class="link" data-pass="${u.id}">Senha</button> <button class="link danger" data-del="${u.id}">Excluir</button>` : '<span class="muted">—</span>'}</td>
         </tr>`;
     }
     function bindUserActions() {
@@ -1161,11 +1163,11 @@
             <form id="user-form">
                 <label>Nome<input name="name" required value="${esc(u?.name || '')}"></label>
                 <label>E-mail<input type="email" name="email" required value="${esc(u?.email || '')}"></label>
-                <label>Perfil<select name="role" required>
+                ${podeAdmin ? `<label>Perfil<select name="role" required>
                     <option value="tecnico" ${u?.role === 'tecnico' ? 'selected' : ''}>Técnico</option>
                     <option value="supervisor" ${u?.role === 'supervisor' ? 'selected' : ''}>Supervisor</option>
-                    ${podeAdmin ? `<option value="admin" ${u?.role === 'admin' ? 'selected' : ''}>Administrador</option>` : ''}
-                </select></label>
+                    <option value="admin" ${u?.role === 'admin' ? 'selected' : ''}>Administrador</option>
+                </select></label>` : '<p class="muted">O novo usuário será criado como <strong>Técnico</strong>.</p>'}
                 <label>Funcionário no IXC<select name="ixc_funcionario_id">${funcOpts}</select></label>
                 ${isEdit ? `<label class="inline"><input type="checkbox" name="ativo" ${Number(u.ativo) ? 'checked' : ''}> Ativo</label>`
                          : `<label>Senha inicial<input type="text" name="password" required minlength="6" value="${randPass()}"></label>`}
@@ -1175,7 +1177,7 @@
         $('#user-form').addEventListener('submit', async (ev) => {
             ev.preventDefault();
             const f = new FormData(ev.target);
-            const payload = { name: f.get('name').trim(), email: f.get('email').trim(), role: f.get('role'), ixc_funcionario_id: f.get('ixc_funcionario_id') || null };
+            const payload = { name: f.get('name').trim(), email: f.get('email').trim(), role: podeAdmin ? f.get('role') : 'tecnico', ixc_funcionario_id: f.get('ixc_funcionario_id') || null };
             if (isEdit) payload.ativo = f.get('ativo') ? 1 : 0; else payload.password = f.get('password');
             try { isEdit ? await Api.updateUser(u.id, payload) : await Api.createUser(payload); closeModal(); toast('Usuário salvo.'); renderUsuarios(); }
             catch (e) { toast(e.message, true); }

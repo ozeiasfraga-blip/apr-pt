@@ -11,11 +11,11 @@ class SyncController
 {
     /**
      * POST /api/sync/os  { date?: "YYYY-MM-DD", id_tecnico?: int }
-     * Supervisor/admin.
+     * Admin (sincronização manual; o cron faz a automática).
      */
     public static function os(): void
     {
-        Middleware::requireSupervisor();
+        Middleware::requireAdmin();
         $data = json_decode(file_get_contents('php://input'), true) ?? [];
 
         $date = $data['date'] ?? $_GET['date'] ?? date('Y-m-d');
