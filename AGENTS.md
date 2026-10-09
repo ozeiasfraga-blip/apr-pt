@@ -58,6 +58,7 @@ dos técnicos. Integra-se de forma **somente leitura** ao ERP **IXC Soft** (API 
 | `src/Models/DocumentoSst.php` | Documento único APR/PT |
 | `src/Services/GoogleOAuthService.php` | 2ª cópia do PDF no Google Drive (OAuth) |
 | `scripts/renomear_pdf_os.php` | Migra os PDFs para o padrão `OS-<ixc_id>.pdf` |
+| `scripts/verificar_drive.php` | Confere/repara a 2ª cópia no Drive (cron diário) |
 | `scripts/sync_os.php` | Sincroniza as OS do dia (cron) |
 | `migrations/001_init.sql` | Schema inicial |
 | `android/app/src/main/java/br/net/nwt/aprpt/MainActivity.java` | App Android nativo (WebView) |
@@ -117,6 +118,14 @@ técnico novo. A trava é no backend (`requireAdmin`); o frontend só esconde.
   `storage/credentials/rclone.conf` (**nunca versionar**).
 - Backfill: `php scripts/enviar_drive.php` (só as que faltam) ou
   `php scripts/enviar_drive.php --all` (reenvia/atualiza todas as encerradas).
+- **Conferência diária:** `php scripts/verificar_drive.php` (cron
+  `/etc/cron.d/aprpt-verifica-drive`, 03:30, user `www-data`, saída em
+  `/var/log/aprpt-verifica-drive.log`). Para cada PT encerrada confere se tem
+  `pdf_drive_id`, se o arquivo ainda existe no Drive e se o nome bate; o que
+  estiver errado é **reenviado na hora** e registrado em `log_auditoria`
+  (`drive_backup_reparado` / `drive_backup_reparo_falhou`).
+  `--dry-run` só mostra. Códigos: 0 ok, 1 sem nuvem, 2 não conseguiu ler o
+  Drive (aborta sem reparar por cima), 3 ainda tem problema.
 
 ## App Android (APK)
 

@@ -1,0 +1,4 @@
+# APR/PT — confere a 2ª cópia (Google Drive) das PTs encerradas e repara o que faltar.
+# Diário às 03:30. Roda como www-data (o script pode gerar PDF em storage/pdfs,
+# e arquivo criado por root quebraria o Apache depois).
+30 3 * * * www-data /usr/bin/php /var/www/apr-pt/scripts/verificar_drive.php >> /var/log/aprpt-verifica-drive.log 2>&1
