@@ -62,11 +62,10 @@ h1, h2, h3 { color: #0b1220; letter-spacing: -.01em; }
 /* ── Marca ──────────────────────────────────────────────── */
 .brand-mark {
     display: inline-grid; place-items: center; flex: none;
-    width: 40px; height: 40px; border-radius: 12px;
-    background: linear-gradient(135deg, var(--brand-3), var(--brand));
-    color: #fff; box-shadow: 0 6px 16px rgba(13, 59, 102, .32);
+    background: #fff; border-radius: 12px; padding: 6px;
+    box-shadow: 0 6px 16px rgba(13, 59, 102, .32);
 }
-.brand-mark svg { display: block; }
+.brand-mark img { display: block; max-width: 100%; max-height: 100%; }
 
 /* ── Login ──────────────────────────────────────────────── */
 .login-wrap {
@@ -84,14 +83,9 @@ h1, h2, h3 { color: #0b1220; letter-spacing: -.01em; }
 }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .login-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+.login-head .brand-mark { width: 78px; height: 46px; }
 .login-head h1 { font-size: 22px; margin: 0; }
 .login-head p { margin: 2px 0 0; font-size: 13px; color: var(--muted); line-height: 1.35; }
-.login-empresa {
-    display: flex; justify-content: center;
-    margin: 0 0 18px; padding-bottom: 16px;
-    border-bottom: 1px solid var(--line);
-}
-.login-empresa img { display: block; height: 32px; width: auto; }
 .login-sub { margin: 0 0 20px; font-size: 13.5px; color: var(--muted); }
 .login-foot {
     margin: 18px 0 0; text-align: center; font-size: 12px; color: var(--muted);
@@ -113,13 +107,9 @@ h1 { font-size: 21px; margin: 0; }
     color: #fff; text-decoration: none; font-weight: 700;
     font-size: 16px; letter-spacing: .02em;
 }
-.brand .brand-mark {
-    width: 34px; height: 34px; border-radius: 10px;
-    background: rgba(255, 255, 255, .16); box-shadow: none;
-}
 .brand-nwt {
-    display: block; height: 15px; width: auto;
-    background: #fff; border-radius: 5px; padding: 3px 6px;
+    display: block; height: 22px; width: auto; flex: none;
+    background: #fff; border-radius: 6px; padding: 4px 8px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
 }
 .nav { display: flex; gap: 5px; flex: 1; flex-wrap: wrap; }
@@ -511,9 +501,8 @@ button.link.danger:hover { background: #fdecec; }
     .topbar { padding: 8px 12px; gap: 10px; }
     /* Cabeçalho em uma única linha: escudo + navegação + usuário */
     .topbar { padding: 6px 10px; gap: 8px; flex-wrap: nowrap; min-height: 52px; }
-    .brand .brand-mark { width: 32px; height: 32px; }
-    .brand > span:not(.brand-mark) { display: none; } /* texto "APR/PT" sai no celular; o selo NWT fica */
-    .brand-nwt { height: 14px; padding: 3px 5px; }
+    .brand > span { display: none; } /* texto "APR/PT" sai no celular; a logo NWT fica */
+    .brand-nwt { height: 18px; padding: 3px 6px; }
     .nav { order: 0; width: auto; flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
     .nav::-webkit-scrollbar { display: none; }
     .nav a { white-space: nowrap; padding: 6px 10px; font-size: 13px; }

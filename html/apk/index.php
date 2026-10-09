@@ -9,8 +9,6 @@ $tamanho = htmlspecialchars($v['tamanho'] ?? '—');
 $publicado = htmlspecialchars($v['publicado_em'] ?? '—');
 $novidades = htmlspecialchars($v['novidades'] ?? '');
 $apk = htmlspecialchars($v['apk'] ?? 'app.apk');
-
-$svgMarca = '<svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5.5c0 4.2-2.9 7.1-7 8.5-4.1-1.4-7-4.3-7-8.5V6z"/><path d="M8.8 12.2l2.3 2.3 4.1-4.4"/></svg>';
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -39,12 +37,6 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke=
         .card {
             background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
             max-width: 420px; width: 100%; padding: 32px 28px 28px; text-align: center;
-        }
-        .marca {
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 72px; height: 72px; border-radius: 20px;
-            background: linear-gradient(140deg, var(--brand-2), var(--brand));
-            color: #fff; margin-bottom: 16px; box-shadow: 0 6px 18px rgba(13, 59, 102, .30);
         }
         .empresa { display: block; height: 34px; width: auto; margin: 0 auto 18px; }
         h1 { font-size: 22px; color: var(--brand); margin-bottom: 4px; }
@@ -79,7 +71,6 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke=
 <body>
     <main class="card">
         <img class="empresa" src="/assets/img/nwt-logo.png" alt="NWT Telecom">
-        <div class="marca"><?= $svgMarca ?></div>
         <h1>APR/PT</h1>
         <p class="sub">Análise Preliminar de Risco e Permissão de Trabalho</p>
 

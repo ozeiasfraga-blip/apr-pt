@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../src/bootstrap.php';
 
 $marca = htmlspecialchars($_ENV['APP_NAME'] ?? 'APR/PT');
-$svgMarca = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5.5c0 4.2-2.9 7.1-7 8.5-4.1-1.4-7-4.3-7-8.5V6z"/><path d="M8.8 12.2l2.3 2.3 4.1-4.4"/></svg>';
+$logoV = @filemtime(__DIR__ . '/assets/img/nwt-logo.png');
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -21,11 +21,8 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke=
     <!-- ── Login ─────────────────────────────────────────── -->
     <div id="view-login" class="login-wrap">
         <section class="card">
-            <div class="login-empresa">
-                <img src="/assets/img/nwt-logo.png" alt="NWT Telecom">
-            </div>
             <div class="login-head">
-                <span class="brand-mark"><?= $svgMarca ?></span>
+                <span class="brand-mark"><img src="/assets/img/nwt-logo.png?v=<?= $logoV ?>" alt="NWT Telecom"></span>
                 <div>
                     <h1><?= $marca ?></h1>
                     <p>Análise Preliminar de Risco e Permissão de Trabalho</p>
@@ -46,9 +43,8 @@ $svgMarca = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke=
     <div id="view-app" class="hidden">
         <header class="topbar">
             <a class="brand" href="#os">
-                <span class="brand-mark"><?= $svgMarca ?></span>
+                <img class="brand-nwt" src="/assets/img/nwt-logo.png?v=<?= $logoV ?>" alt="NWT Telecom">
                 <span><?= $marca ?></span>
-                <img class="brand-nwt" src="/assets/img/nwt-logo.png" alt="NWT Telecom">
             </a>
             <nav id="nav" class="nav">
                 <a href="#os" data-view="os">OS</a>
