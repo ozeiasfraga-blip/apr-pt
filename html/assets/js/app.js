@@ -870,7 +870,8 @@
             if (!payload.epis.some((e) => /cinto/i.test(e))) return 'NR-35: marque o Cinto paraquedista nos EPIs.';
             if (!payload.epis.some((e) => /talabarte/i.test(e))) return 'NR-35: marque o Talabarte nos EPIs.';
         }
-        if (payload.normas.includes('NR-10') && !payload.epis.some((e) => /isolante/i.test(e))) {
+        // Exige a LUVA isolante (a botina também é isolante, mas não substitui a luva)
+        if (payload.normas.includes('NR-10') && !payload.epis.some((e) => /luva/i.test(e) && /isolante/i.test(e))) {
             return 'NR-10: marque a Luva isolante nos EPIs.';
         }
         return null;

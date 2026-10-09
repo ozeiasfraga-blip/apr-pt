@@ -167,7 +167,7 @@ Cada item: **Sim / Não / N/A**. Ver catálogo padrão abaixo.
 - Talabarte em Y com absorvedor de energia — NR-35
 - Trava-queda / linha de vida — NR-35
 - Vestimenta de segurança (anti-chama, quando elétrica)
-- Botina de segurança
+- Botina de segurança isolante (bico rígido)
 - Protetor auricular (quando aplicável)
 - Respirador / máscara (poeira ou produto químico)
 
