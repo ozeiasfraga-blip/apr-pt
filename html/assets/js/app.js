@@ -538,7 +538,7 @@
                 <small class="muted" id="ferr-ajuda"></small>
 
                 <span class="label">EPIs e EPCs Obrigatórios</span>
-                <div class="checks">${cat.epis.map((x) => `<label class="chip"><input type="checkbox" class="epi" data-nr="${esc(x.nr || '')}" value="${esc(x.descricao)}" ${episSel.has(x.descricao) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(x.descricao)}</label>`).join('')}</div>
+                <div class="checks">${cat.epis.map((x) => `<label class="chip"><input type="checkbox" class="epi" data-codigo="${esc(x.codigo)}" data-nr="${esc(x.nr || '')}" value="${esc(x.descricao)}" ${episSel.has(x.descricao) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(x.descricao)}</label>`).join('')}</div>
 
                 <div class="field"><span class="label">Riscos, impactos e medidas de controle</span>
                     <small class="muted">Marque apenas os riscos correspondentes à atividade que será executada.</small>
@@ -637,9 +637,10 @@
             const n = nivelTexto($('.rk-sev', tr).value, $('.rk-prob', tr).value);
             nl.className = n.cls; nl.textContent = n.texto;
         }));
-        $$('.rk-check').forEach((cb) => cb.addEventListener('change', () => { preencherRisco(cb.closest('tr')); aplicarFerramentas(); }));
+        $$('.rk-check').forEach((cb) => cb.addEventListener('change', () => { preencherRisco(cb.closest('tr')); aplicarFerramentas(); aplicarEpis(); }));
         $$('.ferramenta').forEach((cb) => cb.addEventListener('change', atualizaFerramentasUI));
         aplicarFerramentas();   // risco já marcado traz a ferramenta associada
+        aplicarEpis();          // risco já marcado traz o EPI associado
         atualizaFerramentasUI(); // contador e mínimo exigido
         $$('.norma').forEach((c) => c.addEventListener('change', aplicarNormas));
         travarTreinamentos(); // treinamentos/ASO: preenche e trava ao abrir o formulário
@@ -737,7 +738,7 @@
         const n = nivelTexto(sev, prob);
         const opcoes = (v) => [1, 2, 3, 4, 5].map((x) => `<option value="${x}" ${Number(v) === x ? 'selected' : ''}>${x}</option>`).join('');
         const dis = readOnly ? 'disabled' : '';
-        return `<tr data-codigo="${esc(r.codigo)}" data-perigo="${esc(r.descricao)}" data-nr="${esc(r.nr || '')}" data-ferramentas="${esc(r.ferramentas || '')}" data-categoria="${esc(r.categoria || '')}" data-medida="${esc(r.medidas || '')}" data-sev="${esc(r.severidade || '')}" data-prob="${esc(r.probabilidade || '')}">
+        return `<tr data-codigo="${esc(r.codigo)}" data-perigo="${esc(r.descricao)}" data-nr="${esc(r.nr || '')}" data-ferramentas="${esc(r.ferramentas || '')}" data-epis="${esc(r.epis || '')}" data-categoria="${esc(r.categoria || '')}" data-medida="${esc(r.medidas || '')}" data-sev="${esc(r.severidade || '')}" data-prob="${esc(r.probabilidade || '')}">
             <td><label class="inline"><input type="checkbox" class="rk-check" ${checked} ${dis}> ${esc(r.descricao)}</label></td>
             <td><select class="rk-sev" ${dis}><option value=""></option>${opcoes(sev)}</select></td>
             <td><select class="rk-prob" ${dis}><option value=""></option>${opcoes(prob)}</select></td>
@@ -790,6 +791,22 @@
             });
         }
         atualizaFerramentasUI();
+    }
+
+    // EPI associado a um risco marcado (ex.: Ruído e vibração → Protetor auricular):
+    // só acrescenta — nunca desmarca o que o técnico escolheu.
+    function aplicarEpis() {
+        const trechos = [];
+        $$('tr[data-codigo]').forEach((tr) => {
+            const cb = $('.rk-check', tr);
+            if (cb && cb.checked && tr.dataset.epis) trechos.push(tr.dataset.epis);
+        });
+        if (trechos.length) {
+            const quero = trechos.join(',').split(',').map((s) => s.trim()).filter(Boolean);
+            $$('.epi').forEach((cb) => {
+                if (!cb.disabled && quero.includes(cb.dataset.codigo)) cb.checked = true;
+            });
+        }
     }
 
     // Contador de ferramentas + mínimo exigido para assinar
@@ -846,8 +863,9 @@
         // Validade dos treinamentos / habilitação — preenchidos e travados
         travarTreinamentos(normas);
 
-        // Risco marcado pela NR leva a ferramenta associada junto
+        // Risco marcado pela NR leva ferramenta e EPI associados junto
         aplicarFerramentas();
+        aplicarEpis();
 
         toast(normas.length ? `Campos de ${normas.join(', ')} marcados automaticamente.` : 'NRs desmarcadas — itens automáticos limpos.');
     }
@@ -1185,6 +1203,7 @@
                 { k: 'consequencia', l: 'Consequência', t: 'text' },
                 { k: 'medidas', l: 'Medidas de controle (sugestão)', t: 'textarea' },
                 { k: 'ferramentas', l: 'Ferramentas associadas (marca automática)', t: 'ferramentas' },
+                { k: 'epis', l: 'EPIs associados (marca automática)', t: 'epis' },
                 { k: 'ordem', l: 'Ordem', t: 'number' },
                 { k: 'ativo', l: 'Ativo', t: 'bool' },
             ],
@@ -1298,6 +1317,12 @@
                 return `<span class="label">${esc(c.l)}</span>
                     <div class="checks">${ops.map((f) => `<label class="chip"><input type="checkbox" name="${c.k}" value="${esc(f.codigo)}" ${atuais.includes(f.codigo) ? 'checked' : ''}> ${esc(f.descricao)}</label>`).join('')}</div>`;
             }
+            if (c.t === 'epis') {
+                const atuais = String(v || '').split(',').map((s) => s.trim()).filter(Boolean);
+                const ops = state.modelo.listas.epis || [];
+                return `<span class="label">${esc(c.l)}</span>
+                    <div class="checks">${ops.map((f) => `<label class="chip"><input type="checkbox" name="${c.k}" value="${esc(f.codigo)}" ${atuais.includes(f.codigo) ? 'checked' : ''}> ${esc(f.descricao)}</label>`).join('')}</div>`;
+            }
             if (c.t === 'bool') return `<label class="inline"><input type="checkbox" name="${c.k}" ${Number(v) ? 'checked' : ''}> ${esc(c.l)}</label>`;
             if (c.t === 'textarea') return `<label>${esc(c.l)}<textarea name="${c.k}" rows="3">${esc(v)}</textarea></label>`;
             if (c.t === 'number') return `<label>${esc(c.l)}<input type="number" name="${c.k}" value="${esc(v)}"></label>`;
@@ -1313,7 +1338,7 @@
             const f = new FormData(ev.target);
             const payload = {};
             def.campos.forEach((c) => {
-                if (c.t === 'nr' || c.t === 'ferramentas') { payload[c.k] = f.getAll(c.k).join(','); return; }
+                if (['nr', 'ferramentas', 'epis'].includes(c.t)) { payload[c.k] = f.getAll(c.k).join(','); return; }
                 payload[c.k] = c.t === 'bool' ? (f.get(c.k) ? 1 : 0) : (c.t === 'number' ? (+f.get(c.k) || 0) : (f.get(c.k) || '').trim());
             });
             try {

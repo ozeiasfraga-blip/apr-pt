@@ -119,3 +119,7 @@ cd android && ANDROID_HOME=/opt/android-sdk ./gradlew assembleRelease  # Gerar o
   `FR-20`) e a ferramenta é marcada junto quando o risco é marcado (só acrescenta,
   nunca desmarca); o **mínimo para assinar** fica em
   `config_textos.ferramentas_minimas` (editável em Modelo APR/PT → Textos).
+- Risco também pode apontar **EPIs associados** (`catalogo_riscos.epis`, códigos
+  separados por vírgula — ex.: Ruído e vibração → `EPI-10`), marcados junto quando
+  o risco é marcado (mesma regra: só acrescenta). Ambos editáveis no próprio campo
+  do risco em Modelo APR/PT → Riscos.

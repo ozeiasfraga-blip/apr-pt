@@ -18,7 +18,7 @@ class CatalogoController
         $db = Database::getInstance();
 
         $riscos = $db->query(
-            'SELECT codigo, categoria, nr, descricao, fonte, consequencia, medidas, ferramentas, severidade, probabilidade
+            'SELECT codigo, categoria, nr, descricao, fonte, consequencia, medidas, ferramentas, epis, severidade, probabilidade
              FROM catalogo_riscos WHERE ativo = 1
              ORDER BY categoria, ordem, id'
         )->fetchAll();
