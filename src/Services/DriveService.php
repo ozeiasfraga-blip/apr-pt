@@ -69,8 +69,13 @@ class DriveService
             throw new \RuntimeException('Não foi possível ler o PDF para envio ao Drive.');
         }
 
+        // Unidades compartilhadas: supportsAllDrives vale nas 3 chamadas,
+        // mas includeItemsFromAllDrives só existe em listFiles.
+        $compartilhada = ['supportsAllDrives' => true];
+        $listagem = ['supportsAllDrives' => true, 'includeItemsFromAllDrives' => true];
+
         // Reencerrar não duplica: atualiza o arquivo que já tem este uuid
-        $achados = $service->files->listFiles([
+        $achados = $service->files->listFiles(array_merge($listagem, [
             'q' => sprintf(
                 "'%s' in parents and appProperties has { key='uuid' and value='%s' } and trashed = false",
                 str_replace("'", "\\'", $pasta),
@@ -78,15 +83,15 @@ class DriveService
             ),
             'fields' => 'files(id)',
             'pageSize' => 1,
-        ])->getFiles();
+        ]))->getFiles();
 
         if (!empty($achados)) {
             $id = $achados[0]->getId();
-            $service->files->update($id, new DriveFile(), [
+            $service->files->update($id, new DriveFile(), array_merge($compartilhada, [
                 'data' => $conteudo,
                 'mimeType' => 'application/pdf',
                 'uploadType' => 'multipart',
-            ]);
+            ]));
             return $id;
         }
 
@@ -96,11 +101,11 @@ class DriveService
             'mimeType' => 'application/pdf',
             'appProperties' => ['uuid' => $uuid],
         ]);
-        $criado = $service->files->create($meta, [
+        $criado = $service->files->create($meta, array_merge($compartilhada, [
             'data' => $conteudo,
             'mimeType' => 'application/pdf',
             'uploadType' => 'multipart',
-        ]);
+        ]));
 
         return $criado->getId();
     }

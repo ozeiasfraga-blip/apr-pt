@@ -11,6 +11,7 @@ use App\Services\StorageService;
 use App\Services\PdfService;
 use App\Services\DriveService;
 use App\Services\RcloneService;
+use App\Services\GoogleOAuthService;
 use App\Helpers\Response;
 use App\Helpers\Validator;
 use App\Middleware;
@@ -356,9 +357,14 @@ class DocumentoSstController
         try {
             $pdfPath = PdfService::gerarDocumento(DocumentoSst::getById((int)$doc['id']));
             DocumentoSst::setPdfPath((int)$doc['id'], $pdfPath);
-            // Segunda cópia na nuvem: conta de serviço ou rclone (Drive/Dropbox).
-            // Ignora silenciosamente se nada estiver configurado.
-            $nuvemId = DriveService::enviarPdf(
+            // Segunda cópia na nuvem. Tenta nesta ordem: OAuth com conta real
+            // (funciona em qualquer conta), conta de serviço (só Workspace /
+            // unidades compartilhadas) e rclone. Ignora se nada estiver configurado.
+            $nuvemId = GoogleOAuthService::enviarPdf(
+                StorageService::absolute($pdfPath),
+                basename($pdfPath),
+                (string)$doc['uuid']
+            ) ?? DriveService::enviarPdf(
                 StorageService::absolute($pdfPath),
                 basename($pdfPath),
                 (string)$doc['uuid']

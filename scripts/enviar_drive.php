@@ -14,11 +14,13 @@ use App\Database;
 use App\Models\DocumentoSst;
 use App\Services\DriveService;
 use App\Services\RcloneService;
+use App\Services\GoogleOAuthService;
 use App\Services\PdfService;
 use App\Services\StorageService;
 
-if (!DriveService::configurado() && !RcloneService::configurado()) {
-    fwrite(STDERR, "Nuvem não configurada: conta de serviço (GOOGLE_DRIVE_*) ou rclone (RCLONE_*) no .env" . PHP_EOL);
+if (!GoogleOAuthService::conectado() && !DriveService::configurado() && !RcloneService::configurado()) {
+    fwrite(STDERR, "Nuvem não configurada: conecte o Google Drive pelo app (Modelo APR/PT → Drive), "
+        . "ou configure conta de serviço (GOOGLE_DRIVE_*) / rclone (RCLONE_*) no .env" . PHP_EOL);
     exit(1);
 }
 
@@ -39,7 +41,8 @@ foreach ($docs as $doc) {
         $rel = (!empty($doc['pdf_path']) && is_file(StorageService::absolute($doc['pdf_path'])))
             ? $doc['pdf_path']
             : PdfService::gerarDocumento($doc);
-        $id = DriveService::enviarPdf(StorageService::absolute($rel), basename($rel), (string)$doc['uuid'])
+        $id = GoogleOAuthService::enviarPdf(StorageService::absolute($rel), basename($rel), (string)$doc['uuid'])
+            ?? DriveService::enviarPdf(StorageService::absolute($rel), basename($rel), (string)$doc['uuid'])
             ?? RcloneService::enviarPdf(StorageService::absolute($rel), basename($rel), (string)$doc['uuid']);
         if ($id) {
             DocumentoSst::setPdfDriveId((int)$doc['id'], $id);

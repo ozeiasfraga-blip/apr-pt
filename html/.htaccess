@@ -6,6 +6,9 @@ RewriteEngine On
 # API tem regras próprias
 RewriteRule ^api/ - [L]
 
+# Callback do OAuth do Google Drive (servido em HTTPS pelo proxy de rede.nwt.net.br)
+RewriteRule ^oauth/(.*)$ oauth/index.php [QSA,L]
+
 # O service worker nunca deve vir do cache HTTP (garante atualização da interface)
 <Files "service-worker.js">
     Header set Cache-Control "no-cache, no-store, must-revalidate"

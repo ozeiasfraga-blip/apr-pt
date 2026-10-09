@@ -85,6 +85,11 @@ route('DELETE', '/api/modelo/{tipo}/{id}', [\App\Controllers\CatalogoAdminContro
 // ── Healthcheck ─────────────────────────────────────────────
 route('GET', '/api/arquivo', [\App\Controllers\ArquivoController::class, 'show']);
 
+// ── Google Drive (2ª cópia do PDF — só admin) ────────────────
+route('GET', '/api/drive/status', [\App\Controllers\DriveController::class, 'status']);
+route('GET', '/api/drive/oauth-url', [\App\Controllers\DriveController::class, 'oauthUrl']);
+route('DELETE', '/api/drive/oauth', [\App\Controllers\DriveController::class, 'desconectar']);
+
 route('GET', '/api/health', function () {
     Response::success([
         'app' => $_ENV['APP_NAME'] ?? 'APR/PT',
