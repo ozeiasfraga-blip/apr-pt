@@ -87,7 +87,8 @@ class DriveService
 
         if (!empty($achados)) {
             $id = $achados[0]->getId();
-            $service->files->update($id, new DriveFile(), array_merge($compartilhada, [
+            // Metadados junto do conteúdo: mantém o nome (OS-xxx.pdf) em dia
+            $service->files->update($id, new DriveFile(['name' => $nome]), array_merge($compartilhada, [
                 'data' => $conteudo,
                 'mimeType' => 'application/pdf',
                 'uploadType' => 'multipart',

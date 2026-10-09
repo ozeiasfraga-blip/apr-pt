@@ -34,10 +34,38 @@ class PdfService
             throw new \RuntimeException('Não foi possível criar o diretório de PDFs.');
         }
 
-        $relative = 'pdfs/apr_pt_' . $doc['uuid'] . '.pdf';
+        $relative = self::nomeArquivo($doc, $os ?: []);
         file_put_contents(StorageService::basePath() . '/' . $relative, $dompdf->output());
 
         return $relative;
+    }
+
+    /**
+     * Nome do arquivo: "OS-<número da OS>.pdf" (o mesmo # que a tela mostra).
+     *
+     * O modelo hoje é de 1 PT por OS, mas nada garante isso no banco: se outra
+     * PT já ocupar o nome, acrescenta o começo do uuid para não sobrescrever.
+     */
+    private static function nomeArquivo(array $doc, array $os): string
+    {
+        $numero = (string)($os['ixc_id'] ?? '');
+        if ($numero === '') {
+            return 'pdfs/apr_pt_' . $doc['uuid'] . '.pdf';
+        }
+
+        $base = 'OS-' . preg_replace('/[^0-9]/', '', $numero);
+        $candidato = 'pdfs/' . $base . '.pdf';
+
+        // Outra PT já usa este nome? Desempata com o uuid (sem quebrar o atual).
+        $stmt = Database::getInstance()->prepare(
+            'SELECT id FROM documentos_sst WHERE pdf_path = ? AND id <> ? LIMIT 1'
+        );
+        $stmt->execute([$candidato, (int)$doc['id']]);
+        if ($stmt->fetch()) {
+            $candidato = 'pdfs/' . $base . '_' . substr((string)$doc['uuid'], 0, 8) . '.pdf';
+        }
+
+        return $candidato;
     }
 
     private static function render(array $doc, array $os, array $assinaturas): string

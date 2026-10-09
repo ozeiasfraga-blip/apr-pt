@@ -56,6 +56,8 @@ dos técnicos. Integra-se de forma **somente leitura** ao ERP **IXC Soft** (API 
 | `src/Services/IxcService.php` | Cliente da API do IXC (leitura) |
 | `src/Models/OrdemServico.php` | Espelho das OS do IXC |
 | `src/Models/DocumentoSst.php` | Documento único APR/PT |
+| `src/Services/GoogleOAuthService.php` | 2ª cópia do PDF no Google Drive (OAuth) |
+| `scripts/renomear_pdf_os.php` | Migra os PDFs para o padrão `OS-<ixc_id>.pdf` |
 | `scripts/sync_os.php` | Sincroniza as OS do dia (cron) |
 | `migrations/001_init.sql` | Schema inicial |
 | `android/app/src/main/java/br/net/nwt/aprpt/MainActivity.java` | App Android nativo (WebView) |
@@ -78,18 +80,43 @@ Supervisor enxerga somente técnicos na lista de usuários (`UserController`
 força o filtro) e usa a lista de funcionários do IXC só para vincular o
 técnico novo. A trava é no backend (`requireAdmin`); o frontend só esconde.
 
+## Nome do arquivo do PDF
+
+- O PDF é salvo como **`storage/pdfs/OS-<ixc_id>.pdf`** (o mesmo `#` que a tela
+  exibe, vindo de `ordens_servico.ixc_id`) — vale para o download e para o
+  nome no Google Drive.
+- **1 PT por OS** é o modelo do dia a dia, mas o banco não garante isso: se
+  outra PT já ocupar o nome, entra o começo do uuid
+  (`OS-170742_11111111.pdf`). Sem `ixc_id`, cai no `apr_pt_<uuid>.pdf`.
+- Regra concentrada em `PdfService::nomeArquivo()`.
+- Migração dos arquivos antigos (`apr_pt_<uuid>.pdf`):
+  `php scripts/renomear_pdf_os.php` (renomeia no disco, corrige `pdf_path`;
+  os nomes no Drive são atualizados pelo `enviar_drive.php --all`).
+
 ## Segunda cópia do PDF (nuvem)
 
 - Ao **encerrar a PT**, o PDF final sobe para a nuvem e o identificador fica em
-  `documentos_sst.pdf_drive_id`. Reencerrar atualiza o mesmo arquivo.
-- Backends (tenta nesta ordem): conta de serviço (`DriveService`, Google) e
-  rclone (`RcloneService`: Drive/Dropbox/OneDrive via `rclone authorize` no PC).
-- rclone: `RCLONE_BIN/CONFIG/REMOTE/DIR` no .env; remote configurado em
-  `storage/credentials/rclone.conf` (**nunca versionar**). O rclone renova o
-  acesso sozinho; o mesmo nome de arquivo sobrescreve (sem duplicar).
-- Sem config, o envio é ignorado e nada quebra.
+  `documentos_sst.pdf_drive_id`. Reencerrar atualiza o mesmo arquivo (busca
+  pelo `uuid` gravado em `appProperties`) e também **renomeia** o arquivo lá.
+- **Backend ativo: Google Drive via OAuth (`GoogleOAuthService`)** — o envio
+  usa a cota de uma conta real (contas de serviço criadas após 15/04/2025 têm
+  cota zero e não gravam no "Meu Drive" pessoal; só servem em unidades
+  compartilhadas, que exigem Google Workspace).
+  - Credenciais em `.env`: `GOOGLE_OAUTH_CLIENT_ID/SECRET/REDIRECT_URI`.
+  - O redirect URI é **`https://rede.nwt.net.br/oauth/drive/callback`**
+    (proxy no vhost do GeoManager → porta 8089), porque o Google exige HTTPS.
+  - Tokens gravados em `storage/credentials/google-oauth.json` (nunca
+    versionar, dono `www-data`, modo 0600 — **se o arquivo for criado por
+    root o Apache não lê e o `state` "não bate"**).
+  - Escopo `drive.file`: só enxerga arquivos que o próprio app criou.
+  - Reconectar: `GET /api/drive/oauth-url` (admin) → abrir a URL →
+    consentimento → callback. Desconectar: `DELETE /api/drive/oauth`.
+- Backends de reserva (nesta ordem): conta de serviço (`DriveService`) e
+  rclone (`RcloneService`). Sem nada configurado, o envio é ignorado.
+- rclone: `RCLONE_BIN/CONFIG/REMOTE/DIR` no .env; remote em
+  `storage/credentials/rclone.conf` (**nunca versionar**).
 - Backfill: `php scripts/enviar_drive.php` (só as que faltam) ou
-  `php scripts/enviar_drive.php --all` (reenvia todas as encerradas).
+  `php scripts/enviar_drive.php --all` (reenvia/atualiza todas as encerradas).
 
 ## App Android (APK)
 

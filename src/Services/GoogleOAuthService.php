@@ -181,13 +181,20 @@ class GoogleOAuthService
         }
 
         if ($existe) {
+            // Atualiza conteúdo E nome (o PDF pode ter sido renomeado para OS-xxx.pdf)
+            $meta = json_encode(['name' => $nome]);
+            $borda = 'aprpt_' . bin2hex(random_bytes(8));
+            $body = "--{$borda}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{$meta}\r\n"
+                . "--{$borda}\r\nContent-Type: application/pdf\r\n\r\n{$conteudo}\r\n"
+                . "--{$borda}--";
+
             self::api(
                 'PATCH',
                 'https://www.googleapis.com/upload/drive/v3/files/' . $existe
-                . '?uploadType=media&supportsAllDrives=true',
+                . '?uploadType=multipart&supportsAllDrives=true',
                 $token,
-                $conteudo,
-                'application/pdf'
+                $body,
+                'multipart/related; boundary=' . $borda
             );
             return $existe;
         }

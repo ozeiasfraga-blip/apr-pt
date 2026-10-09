@@ -420,7 +420,7 @@ class DocumentoSstController
         }
 
         header('Content-Type: application/pdf');
-        header('Content-Disposition: inline; filename="apr_pt_' . $doc['uuid'] . '.pdf"');
+        header('Content-Disposition: inline; filename="' . basename($path) . '"');
         header('Content-Length: ' . filesize($full));
         readfile($full);
         exit;
