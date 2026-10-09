@@ -21,7 +21,9 @@
 /android/build/
 /android/app/build/
 /android/local.properties
+# Chave privada do APK e senha de assinatura (segredos — nunca versionar)
 /android/*.keystore
+/android/keystore.properties
 /android/app-release-*.apk
 /android/app-release-*.aab
 /android/*.idsig

@@ -62,8 +62,17 @@ os documentos pendentes são enviados e aparecem no servidor.
 
 ## Assinatura
 
-- Keystore: `android.keystore` — alias `android`, senha `AprPT@2026` (**não versionada**).
-- As senhas estão em `app/build.gradle` (signingConfigs).
+- Keystore: `android.keystore` — alias `android`.
+- As senhas **não ficam no código**: `build.gradle` lê
+  `android/keystore.properties` (arquivo **não versionado**). Sem ele o build de
+  debug funciona, mas o de release falha avisando o que falta.
+  `keystore.properties` deve ter:
+  ```properties
+  storeFile=android.keystore
+  storePassword=<sua senha>
+  keyAlias=android
+  keyPassword=<sua senha>
+  ```
 - **Sem essa chave o Android recusa atualizar o app instalado** (seria preciso
   desinstalar antes). Mantenha um backup da keystore junto com o backup do servidor.
 

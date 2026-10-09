@@ -136,8 +136,9 @@ técnico novo. A trava é no backend (`requireAdmin`); o frontend só esconde.
 - **Publicar:** copie `app/build/outputs/apk/release/app-release.apk` para
   `html/apk/app.apk`, incremente `versionCode`/`versionName` em `android/app/build.gradle`
   e atualize `html/apk/versao.json` (o app avisa os usuários da nova versão).
-- **Keystore:** `android/android.keystore` (alias `android`, senha `AprPT@2026`) —
-  **não versionada**. Sem ela o Android recusa atualizar o app instalado.
+- **Keystore:** `android/android.keystore` (alias `android`) + senha em
+  `android/keystore.properties` — ambos **não versionados**. Sem a chave o
+  Android recusa atualizar o app instalado.
 - **Offline:** o APK leva uma cópia do casco (HTML/CSS/JS) gerada por
   `android/tools/sync-web.sh`; OS do dia e catálogo ficam em cache no aparelho e
   a APR/PT preenchida sem internet entra numa fila, enviada por
