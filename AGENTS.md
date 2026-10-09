@@ -78,6 +78,17 @@ Supervisor enxerga somente técnicos na lista de usuários (`UserController`
 força o filtro) e usa a lista de funcionários do IXC só para vincular o
 técnico novo. A trava é no backend (`requireAdmin`); o frontend só esconde.
 
+## Segunda cópia do PDF (Google Drive)
+
+- Ao **encerrar a PT**, o PDF final sobe para a pasta do Drive
+  (`DriveService::enviarPdf`, conta de serviço) e o ID fica em
+  `documentos_sst.pdf_drive_id`. Reencerrar atualiza o mesmo arquivo.
+- Config: `GOOGLE_DRIVE_CREDENTIALS` (JSON da conta de serviço, em
+  `storage/credentials/`, **nunca versionar**) + `GOOGLE_DRIVE_FOLDER_ID`.
+- Sem config, o envio é ignorado e nada quebra.
+- Backfill: `php scripts/enviar_drive.php` (só as que faltam) ou
+  `php scripts/enviar_drive.php --all` (reenvia todas as encerradas).
+
 ## App Android (APK)
 
 - Projeto em `android/`: app nativo com WebView própria que carrega

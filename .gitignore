@@ -12,6 +12,10 @@
 !/storage/assinaturas/.gitkeep
 !/storage/anexos/.gitkeep
 
+# Credencial do Google Drive (segredo — nunca versionar)
+/storage/credentials/*
+!/storage/credentials/.gitkeep
+
 # Projeto Android — artefatos de build e chave privada
 /android/.gradle/
 /android/build/

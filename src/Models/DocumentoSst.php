@@ -238,6 +238,12 @@ class DocumentoSst
         $stmt->execute([$path, $id]);
     }
 
+    public static function setPdfDriveId(int $id, string $driveId): void
+    {
+        $stmt = Database::getInstance()->prepare('UPDATE documentos_sst SET pdf_drive_id = ? WHERE id = ?');
+        $stmt->execute([$driveId, $id]);
+    }
+
     public static function limparEquipe(int $docId): void
     {
         $stmt = Database::getInstance()->prepare('DELETE FROM documento_equipe WHERE documento_id = ?');

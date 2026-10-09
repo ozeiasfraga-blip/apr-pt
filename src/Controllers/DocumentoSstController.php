@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Log;
 use App\Services\StorageService;
 use App\Services\PdfService;
+use App\Services\DriveService;
 use App\Helpers\Response;
 use App\Helpers\Validator;
 use App\Middleware;
@@ -354,6 +355,15 @@ class DocumentoSstController
         try {
             $pdfPath = PdfService::gerarDocumento(DocumentoSst::getById((int)$doc['id']));
             DocumentoSst::setPdfPath((int)$doc['id'], $pdfPath);
+            // Segunda cópia: Google Drive (ignora silenciosamente se não configurado)
+            $driveId = DriveService::enviarPdf(
+                StorageService::absolute($pdfPath),
+                basename($pdfPath),
+                (string)$doc['uuid']
+            );
+            if ($driveId) {
+                DocumentoSst::setPdfDriveId((int)$doc['id'], $driveId);
+            }
         } catch (\Throwable $e) {
             error_log('Falha ao gerar PDF no encerramento ' . $doc['id'] . ': ' . $e->getMessage());
         }
