@@ -527,7 +527,7 @@
 
                 <div class="field"><span class="label">Normas aplicáveis</span>
                     <div class="chips">${NORMAS.map((n) => `<label class="chip"><input type="checkbox" class="norma" value="${esc(n)}" ${normasSel.has(n) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> ${esc(n)}</label>`).join('')}</div>
-                    <small class="muted">Ao marcar uma NR, os riscos, EPIs/EPCs, checklist e os treinamentos correspondentes são marcados automaticamente (desmarque o que não se aplicar).</small>
+                    <small class="muted">Ao marcar uma NR, os riscos, EPIs/EPCs, checklist e os treinamentos correspondentes são marcados automaticamente.</small>
                 </div>
 
                 <span class="label">Ferramentas Utilizadas</span>
@@ -548,6 +548,7 @@
 
                 <div class="termo"><strong>Autorização formal de trabalho.</strong> O empregado está formalmente autorizado a trabalhar pela empresa em atividades envolvendo riscos com eletricidade, conforme exigido pelo item 10.8.4 da NR-10, bem como apto para trabalhos em altura nos termos da NR-35.</div>
                 <div class="field"><span class="label">Validade dos treinamentos / habilitação</span>
+                    <small class="muted">Preenchido automaticamente quando há NR marcada — travado, não pode ser desmarcado.</small>
                     <div class="chips">
                         <label class="chip"><input type="checkbox" id="trn-nr10" ${doc && Number(doc.treinamento_nr10) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> Treinamento NR-10 válido</label>
                         <label class="chip"><input type="checkbox" id="trn-nr35" ${doc && Number(doc.treinamento_nr35) ? 'checked' : ''} ${readOnly ? 'disabled' : ''}> Treinamento NR-35 válido</label>
@@ -634,6 +635,7 @@
         }));
         $$('.rk-check').forEach((cb) => cb.addEventListener('change', () => preencherRisco(cb.closest('tr'))));
         $$('.norma').forEach((c) => c.addEventListener('change', aplicarNormas));
+        travarTreinamentos(); // treinamentos/ASO: preenche e trava ao abrir o formulário
 
         // Equipe envolvida — assinatura por integrante
         function eqAssinCell(m, i) {
@@ -766,6 +768,21 @@
         .split(',').map((s) => s.trim()).filter(Boolean)
         .some((n) => selecionadas.includes(n));
 
+    // Treinamentos/ASO: vêm marcados quando há NR selecionada e ficam TRAVADOS —
+    // o técnico não consegue desmarcar. Em modo leitura não mexe (já vem travado
+    // pelo próprio formulário, com o valor salvo do documento).
+    function travarTreinamentos(normas = $$('.norma:checked').map((x) => x.value)) {
+        const temNorma = normas.length > 0;
+        ['#trn-nr10', '#trn-nr35', '#trn-aso'].forEach((sel) => {
+            const el = $(sel);
+            if (!el) return;
+            if (el.disabled && !el.dataset.travado) return; // modo leitura: só exibe
+            el.checked = temNorma;
+            el.disabled = true;
+            el.dataset.travado = '1';
+        });
+    }
+
     // Marca automaticamente riscos/EPIs/EPCs/checklist conforme as NRs selecionadas
     function aplicarNormas() {
         const normas = $$('.norma:checked').map((x) => x.value);
@@ -792,14 +809,8 @@
             sim.checked = itemTemNr(el.dataset.nr, normas);
         });
 
-        // Validade dos treinamentos / habilitação — preenche conforme as NRs;
-        // o técnico pode desmarcar quando não se aplicar.
-        const trnNr10 = $('#trn-nr10');
-        const trnNr35 = $('#trn-nr35');
-        const trnAso = $('#trn-aso');
-        if (trnNr10 && !trnNr10.disabled) trnNr10.checked = normas.includes('NR-10');
-        if (trnNr35 && !trnNr35.disabled) trnNr35.checked = normas.includes('NR-35');
-        if (trnAso && !trnAso.disabled) trnAso.checked = normas.includes('NR-10') || normas.includes('NR-35');
+        // Validade dos treinamentos / habilitação — preenchidos e travados
+        travarTreinamentos(normas);
 
         toast(normas.length ? `Campos de ${normas.join(', ')} marcados automaticamente.` : 'NRs desmarcadas — itens automáticos limpos.');
     }
