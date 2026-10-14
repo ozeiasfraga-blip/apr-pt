@@ -200,6 +200,30 @@ class UserController
             Response::error('Apenas administradores podem excluir administradores.', 403);
         }
 
+        // Usuário com histórico (documentos ou assinaturas) não pode ser
+        // apagado: a FK travaria e o histórico legal se perderia.
+        // Em vez disso, desativa (o login já bloqueia `ativo = 0`).
+        $vinc = User::countVinculos($userId);
+        if ($vinc['documentos'] > 0 || $vinc['assinaturas'] > 0) {
+            User::update($userId, ['ativo' => 0]);
+            User::deleteUserTokens($userId);
+
+            Log::create([
+                'user_id' => $auth->user_id,
+                'acao' => 'desativar_usuario',
+                'entidade' => 'user',
+                'entidade_id' => $userId,
+                'detalhes' => $vinc,
+                'ip' => Middleware::clientIp(),
+            ]);
+
+            Response::success(
+                User::getById($userId),
+                'Usuário desativado (possui histórico e não pode ser excluído).'
+            );
+        }
+
+        User::deleteUserTokens($userId);
         User::delete($userId);
 
         Log::create([

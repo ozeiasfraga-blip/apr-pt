@@ -122,4 +122,25 @@ class User
         $stmt = Database::getInstance()->prepare('DELETE FROM auth_tokens WHERE user_id = ?');
         $stmt->execute([$userId]);
     }
+
+    /**
+     * Conta os vínculos que impedem a exclusão física (histórico).
+     * Retorna ['documentos' => n, 'assinaturas' => n].
+     */
+    public static function countVinculos(int $id): array
+    {
+        $db = Database::getInstance();
+
+        $stmt = $db->prepare(
+            'SELECT COUNT(*) FROM documentos_sst WHERE tecnico_id = ? OR supervisor_id = ?'
+        );
+        $stmt->execute([$id, $id]);
+        $documentos = (int)$stmt->fetchColumn();
+
+        $stmt = $db->prepare('SELECT COUNT(*) FROM assinaturas WHERE user_id = ?');
+        $stmt->execute([$id]);
+        $assinaturas = (int)$stmt->fetchColumn();
+
+        return ['documentos' => $documentos, 'assinaturas' => $assinaturas];
+    }
 }

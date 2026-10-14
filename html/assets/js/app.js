@@ -1195,8 +1195,10 @@
         });
     }
     async function deleteUser(id) {
-        if (!confirm('Excluir este usuário?')) return;
-        try { await Api.deleteUser(id); toast('Usuário excluído.'); renderUsuarios(); } catch (e) { toast(e.message, true); }
+        const u = cachedUsers.find((x) => x.id === id);
+        if (!confirm(`Excluir ${u?.name || 'este usuário'}?\n\nSe ele tiver histórico (documentos ou assinaturas), será DESATIVADO em vez de excluído.`)) return;
+        // A API devolve o usuário atualizado quando desativa, ou null quando exclui
+        try { const ret = await Api.deleteUser(id); toast(ret ? 'Usuário desativado (possui histórico).' : 'Usuário excluído.'); renderUsuarios(); } catch (e) { toast(e.message, true); }
     }
 
     // ── Helpers ─────────────────────────────────────────────
