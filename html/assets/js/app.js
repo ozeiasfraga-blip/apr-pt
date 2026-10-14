@@ -1240,8 +1240,11 @@
                         fotoUrl ? `<img src="${fotoUrl}" alt="Foto de perfil" style="width:100%;height:100%;object-fit:cover;display:block">` : esc((u.name || '?').trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase())
                     }</span>
                     <div style="display:flex;gap:8px;flex-wrap:wrap">
-                        <label class="secondary" style="cursor:pointer;padding:8px 14px;border-radius:8px">Escolher foto
-                            <input type="file" id="perfil-file" accept="image/*" class="hidden" style="display:none">
+                        <label class="secondary" style="cursor:pointer;padding:8px 14px;border-radius:8px">Tirar foto
+                            <input type="file" id="perfil-cam" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden">
+                        </label>
+                        <label class="secondary" style="cursor:pointer;padding:8px 14px;border-radius:8px">Galeria
+                            <input type="file" id="perfil-file" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden">
                         </label>
                         ${fotoUrl ? '<button type="button" class="secondary" id="perfil-remover">Remover</button>' : ''}
                     </div>
@@ -1257,11 +1260,10 @@
                     <div class="form-actions"><button type="submit">Trocar senha</button></div>
                 </form>
             </div>`;
-        $('#perfil-file').addEventListener('change', async (ev) => {
-            const f = ev.target.files[0];
-            if (!f) return;
+        const enviarFoto = async (file) => {
+            if (!file) return;
             try {
-                const b64 = await reduzFoto(f);
+                const b64 = await reduzFoto(file);
                 const atualizado = await Api.uploadFoto(b64);
                 state.user = atualizado;
                 Offline.gravarSessao(atualizado);
@@ -1269,7 +1271,9 @@
                 toast('Foto atualizada.');
                 renderPerfil();
             } catch (e) { toast(e.message, true); }
-        });
+        };
+        $('#perfil-cam').addEventListener('change', (ev) => { enviarFoto(ev.target.files[0]); });
+        $('#perfil-file').addEventListener('change', (ev) => { enviarFoto(ev.target.files[0]); });
         $('#perfil-remover')?.addEventListener('click', async () => {
             if (!confirm('Remover sua foto?')) return;
             try {

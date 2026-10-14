@@ -17,8 +17,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Message;
+import android.provider.MediaStore;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -28,8 +30,14 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import androidx.core.content.FileProvider;
+
+import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,6 +65,11 @@ public class MainActivity extends Activity {
     private WebView webView;
     private boolean erroVisivel = false;
     private final Map<Long, Boolean> downloads = new HashMap<>(); // id -> é APK?
+
+    // Upload de arquivos (<input type=file>): escolha câmera/galeria
+    private ValueCallback<Uri[]> arquivoCallback;
+    private Uri fotoUri;
+    private static final int REQ_ARQUIVO = 1001;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -138,6 +151,60 @@ public class MainActivity extends Activity {
                 resultMsg.sendToTarget();
                 return true;
             }
+
+            /**
+             * <input type=file>: abre câmera e/ou galeria. Sem isso, tocar no
+             * campo de foto não faz nada no app. Se o campo pede captura
+             * direta (atributo capture), vai direto à câmera.
+             */
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (arquivoCallback != null) arquivoCallback.onReceiveValue(null);
+                arquivoCallback = callback;
+                fotoUri = null;
+
+                Intent galeria = new Intent(Intent.ACTION_GET_CONTENT);
+                galeria.addCategory(Intent.CATEGORY_OPENABLE);
+                galeria.setType("image/*");
+
+                if (params != null && params.isCaptureEnabled()) {
+                    Intent cam = intentCamera();
+                    if (cam != null) {
+                        try {
+                            startActivityForResult(cam, REQ_ARQUIVO);
+                            return true;
+                        } catch (ActivityNotFoundException e) {
+                            // sem câmera: cai na galeria
+                        }
+                    }
+                } else {
+                    Intent cam = intentCamera();
+                    if (cam != null) {
+                        Intent escolha = Intent.createChooser(galeria, "Foto de perfil");
+                        escolha.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{cam});
+                        try {
+                            startActivityForResult(escolha, REQ_ARQUIVO);
+                            return true;
+                        } catch (ActivityNotFoundException e) {
+                            // sem app: avisa
+                        }
+                    } else {
+                        try {
+                            startActivityForResult(Intent.createChooser(galeria, "Foto de perfil"), REQ_ARQUIVO);
+                            return true;
+                        } catch (ActivityNotFoundException e) {
+                            // sem app: avisa
+                        }
+                    }
+                }
+
+                if (arquivoCallback != null) {
+                    arquivoCallback.onReceiveValue(null);
+                    arquivoCallback = null;
+                }
+                Toast.makeText(MainActivity.this, "Nenhum app de foto disponível.", Toast.LENGTH_LONG).show();
+                return true;
+            }
         });
 
         webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) ->
@@ -151,6 +218,42 @@ public class MainActivity extends Activity {
         }
 
         webView.loadUrl(HOME_URL);
+    }
+
+    /** Intent da câmera com arquivo de saída próprio (via FileProvider). Null se falhar. */
+    private Intent intentCamera() {
+        try {
+            Intent cam = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            if (cam.resolveActivity(getPackageManager()) == null) return null;
+            File dir = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "perfil");
+            if (!dir.exists() && !dir.mkdirs()) return null;
+            String nome = "foto_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".jpg";
+            fotoUri = FileProvider.getUriForFile(this, "br.net.nwt.aprpt.fileprovider", new File(dir, nome));
+            cam.putExtra(MediaStore.EXTRA_OUTPUT, fotoUri);
+            cam.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            return cam;
+        } catch (Exception e) {
+            fotoUri = null;
+            return null;
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQ_ARQUIVO || arquivoCallback == null) return;
+
+        Uri[] resultados = null;
+        if (resultCode == RESULT_OK) {
+            if (data != null && data.getData() != null) {
+                resultados = new Uri[]{data.getData()};   // veio da galeria
+            } else if (fotoUri != null) {
+                resultados = new Uri[]{fotoUri};           // veio da câmera
+            }
+        }
+        arquivoCallback.onReceiveValue(resultados);
+        arquivoCallback = null;
+        fotoUri = null;
     }
 
     /** Decide o que fazer com cada URL. Retorna true se o WebView não deve carregá-la. */
