@@ -1409,7 +1409,8 @@
     });
     $('#btn-logout').addEventListener('click', async () => { await Api.logout(); Offline.gravarSessao(null); showLogin(); });
     $('#modal-close').addEventListener('click', closeModal);
-    $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
+    // SEM fechar ao clicar fora do modal: evita perder o formulário preenchido
+    // sem querer. O modal só fecha em Salvar/Cancelar (ou no × do cabeçalho).
     window.addEventListener('hashchange', render);
 
     // Reconexão: envia o que ficou pendente e recarrega os dados
