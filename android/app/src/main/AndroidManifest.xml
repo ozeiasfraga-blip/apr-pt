@@ -6,6 +6,20 @@
     <!-- Necessária para abrir o instalador quando o app baixa uma atualização -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!--
+      Android 11+: sem estas declarações o app não "enxerga" o app de câmera
+      nem a galeria (a foto de perfil não abria nada / dizia "nenhum app").
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT" />
+            <data android:mimeType="image/*" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

@@ -1,8 +1,8 @@
 {
-    "versao": "1.3.2",
-    "versionCode": 6,
+    "versao": "1.3.3",
+    "versionCode": 7,
     "apk": "/apk/app.apk",
     "tamanho": "1,7 MB",
     "publicado_em": "2026-10-14",
-    "novidades": "Meu perfil: foto (tirar na hora ou escolher da galeria) e troca de senha. Correção: os campos de foto abrem a câmera/galeria no app."
+    "novidades": "Correção da foto de perfil: agora abre a câmera e a galeria no celular (Android 11+)."
 }

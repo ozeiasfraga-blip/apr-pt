@@ -167,43 +167,36 @@ public class MainActivity extends Activity {
                 galeria.addCategory(Intent.CATEGORY_OPENABLE);
                 galeria.setType("image/*");
 
-                if (params != null && params.isCaptureEnabled()) {
-                    Intent cam = intentCamera();
-                    if (cam != null) {
-                        try {
-                            startActivityForResult(cam, REQ_ARQUIVO);
-                            return true;
-                        } catch (ActivityNotFoundException e) {
-                            // sem câmera: cai na galeria
-                        }
-                    }
-                } else {
-                    Intent cam = intentCamera();
-                    if (cam != null) {
-                        Intent escolha = Intent.createChooser(galeria, "Foto de perfil");
-                        escolha.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{cam});
-                        try {
-                            startActivityForResult(escolha, REQ_ARQUIVO);
-                            return true;
-                        } catch (ActivityNotFoundException e) {
-                            // sem app: avisa
-                        }
-                    } else {
-                        try {
-                            startActivityForResult(Intent.createChooser(galeria, "Foto de perfil"), REQ_ARQUIVO);
-                            return true;
-                        } catch (ActivityNotFoundException e) {
-                            // sem app: avisa
-                        }
+                Intent cam = intentCamera();
+                boolean pedeCamera = params != null && params.isCaptureEnabled();
+
+                // Captura direta: tenta a câmera primeiro
+                if (pedeCamera && cam != null) {
+                    try {
+                        startActivityForResult(cam, REQ_ARQUIVO);
+                        return true;
+                    } catch (ActivityNotFoundException e) {
+                        fotoUri = null; // cai no seletor abaixo
                     }
                 }
 
-                if (arquivoCallback != null) {
-                    arquivoCallback.onReceiveValue(null);
-                    arquivoCallback = null;
+                // Seletor com a câmera como opção extra (galeria continua acessível)
+                Intent escolha = Intent.createChooser(galeria, "Foto de perfil");
+                if (cam != null) {
+                    escolha.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{cam});
                 }
-                Toast.makeText(MainActivity.this, "Nenhum app de foto disponível.", Toast.LENGTH_LONG).show();
-                return true;
+                try {
+                    startActivityForResult(escolha, REQ_ARQUIVO);
+                    return true;
+                } catch (ActivityNotFoundException e) {
+                    // Sem nenhum app compatível
+                    if (arquivoCallback != null) {
+                        arquivoCallback.onReceiveValue(null);
+                        arquivoCallback = null;
+                    }
+                    Toast.makeText(MainActivity.this, "Nenhum app de foto disponível.", Toast.LENGTH_LONG).show();
+                    return true;
+                }
             }
         });
 
@@ -224,13 +217,16 @@ public class MainActivity extends Activity {
     private Intent intentCamera() {
         try {
             Intent cam = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            if (cam.resolveActivity(getPackageManager()) == null) return null;
             File dir = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "perfil");
             if (!dir.exists() && !dir.mkdirs()) return null;
             String nome = "foto_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".jpg";
             fotoUri = FileProvider.getUriForFile(this, "br.net.nwt.aprpt.fileprovider", new File(dir, nome));
             cam.putExtra(MediaStore.EXTRA_OUTPUT, fotoUri);
+            // ClipData garante a permissão da URI em todos os Android (e no chooser)
+            cam.setClipData(android.content.ClipData.newRawUri("foto", fotoUri));
             cam.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            // Sem resolveActivity: no Android 11+ ele pode devolver null mesmo com câmera
+            // (visibilidade de pacotes). O startActivityForResult é quem decide.
             return cam;
         } catch (Exception e) {
             fotoUri = null;
