@@ -1151,7 +1151,11 @@
             <td><span class="tag role-${u.role}">${ROLE_LABEL[u.role] || u.role}</span></td>
             <td>${u.ixc_funcionario_id ?? '<span class="muted">—</span>'}</td>
             <td>${Number(u.ativo) ? 'Sim' : 'Não'}</td>
-            <td class="acoes">${isAdmin() ? `<button class="link" data-edit="${u.id}">Editar</button> <button class="link" data-pass="${u.id}">Senha</button> <button class="link danger" data-del="${u.id}">Excluir</button>` : '<span class="muted">—</span>'}</td>
+            <td class="acoes">${(() => {
+                if (isAdmin()) return `<button class="link" data-edit="${u.id}">Editar</button> <button class="link" data-pass="${u.id}">Senha</button> <button class="link danger" data-del="${u.id}">Excluir</button>`;
+                if (isSupervisor() && u.role === 'tecnico') return `<button class="link" data-pass="${u.id}">Senha</button>`;
+                return '<span class="muted">—</span>';
+            })()}</td>
         </tr>`;
     }
     function bindUserActions() {

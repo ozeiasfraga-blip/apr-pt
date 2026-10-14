@@ -152,10 +152,10 @@ class UserController
         Response::success(User::getById($userId), 'Usuário atualizado.');
     }
 
-    /** POST /api/users/{id}/senha — somente admin. */
+    /** POST /api/users/{id}/senha — admin (qualquer um) ou supervisor (só técnicos). */
     public static function resetPassword(string $id): void
     {
-        $auth = Middleware::requireAdmin();
+        $auth = Middleware::requireSupervisor();
         $userId = (int)$id;
         $user = User::getById($userId);
         if (!$user) {
@@ -163,6 +163,10 @@ class UserController
         }
         if ($user['role'] === 'admin' && !Middleware::isAdmin($auth)) {
             Response::error('Apenas administradores podem redefinir senha de administradores.', 403);
+        }
+        // Supervisor só mexe em técnico (não em outro supervisor, nem em si mesmo)
+        if (!Middleware::isAdmin($auth) && $user['role'] !== 'tecnico') {
+            Response::error('Supervisores só podem redefinir a senha de técnicos.', 403);
         }
 
         $data = json_decode(file_get_contents('php://input'), true) ?? [];
