@@ -90,6 +90,10 @@ route('GET', '/api/drive/status', [\App\Controllers\DriveController::class, 'sta
 route('GET', '/api/drive/oauth-url', [\App\Controllers\DriveController::class, 'oauthUrl']);
 route('DELETE', '/api/drive/oauth', [\App\Controllers\DriveController::class, 'desconectar']);
 
+// ── Perfil (próprio usuário) ────────────────────────────────
+route('POST', '/api/perfil/foto', [\App\Controllers\PerfilController::class, 'salvarFoto']);
+route('DELETE', '/api/perfil/foto', [\App\Controllers\PerfilController::class, 'removerFoto']);
+
 route('GET', '/api/health', function () {
     Response::success([
         'app' => $_ENV['APP_NAME'] ?? 'APR/PT',

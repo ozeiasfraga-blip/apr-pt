@@ -8,9 +8,11 @@
 /storage/pdfs/*
 /storage/assinaturas/*
 /storage/anexos/*
+/storage/fotos/*
 !/storage/pdfs/.gitkeep
 !/storage/assinaturas/.gitkeep
 !/storage/anexos/.gitkeep
+!/storage/fotos/.gitkeep
 
 # Credencial do Google Drive (segredo — nunca versionar)
 /storage/credentials/*

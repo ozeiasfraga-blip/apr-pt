@@ -51,6 +51,7 @@ $logoV = @filemtime(__DIR__ . '/assets/img/nwt-logo.png');
                 <a href="#documentos" data-view="documentos">APR/PT</a>
                 <a href="#usuarios" data-view="usuarios" data-roles="supervisor,admin">Usuários</a>
                 <a href="#modelo" data-view="modelo" data-roles="admin">Modelo APR/PT</a>
+                <a href="#perfil" data-view="perfil">Meu perfil</a>
             </nav>
             <div class="user-box">
                 <span class="avatar" id="user-avatar" aria-hidden="true"></span>

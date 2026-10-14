@@ -6,7 +6,7 @@ use App\Database;
 
 class User
 {
-    private const PUBLIC_COLUMNS = 'id, name, email, role, ixc_funcionario_id, ativo, created_at, updated_at';
+    private const PUBLIC_COLUMNS = 'id, name, email, role, ixc_funcionario_id, ativo, foto_path, created_at, updated_at';
 
     public static function getAll(): array
     {
@@ -64,7 +64,7 @@ class User
         $fields = [];
         $values = [];
 
-        foreach (['name', 'email', 'role', 'ixc_funcionario_id', 'ativo'] as $field) {
+        foreach (['name', 'email', 'role', 'ixc_funcionario_id', 'ativo', 'foto_path'] as $field) {
             if (array_key_exists($field, $data)) {
                 $fields[] = "{$field} = ?";
                 $values[] = $data[$field];

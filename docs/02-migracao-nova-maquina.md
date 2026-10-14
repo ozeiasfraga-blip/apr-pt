@@ -145,7 +145,7 @@ cd /var/www/apr-pt
 for f in migrations/*.sql; do echo "== $f"; mysql -u apr_pt -p apr_pt < "$f"; done
 ```
 
-São 21 arquivos (`001_init.sql` … `021_pdf_drive_id.sql`), todos com
+São 22 arquivos (`001_init.sql` … `022_user_foto.sql`), todos com
 `CREATE TABLE IF NOT EXISTS` / `ALTER` defensivo.
 
 **Confira a versão do schema:**

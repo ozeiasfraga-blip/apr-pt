@@ -33,3 +33,4 @@ require_once __DIR__ . '/Controllers/CatalogoController.php';
 require_once __DIR__ . '/Controllers/ArquivoController.php';
 require_once __DIR__ . '/Controllers/CatalogoAdminController.php';
 require_once __DIR__ . '/Controllers/DriveController.php';
+require_once __DIR__ . '/Controllers/PerfilController.php';

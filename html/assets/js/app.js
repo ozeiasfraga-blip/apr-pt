@@ -122,13 +122,24 @@
         Offline.gravarSessao(user);
         $('#view-login').classList.add('hidden'); $('#view-app').classList.remove('hidden');
         $('#user-info').textContent = `${user.name} · ${ROLE_LABEL[user.role] || user.role}`;
-        const iniciais = String(user.name || user.email || '?').trim().split(/\s+/).slice(0, 2)
-            .map((p) => p[0]).join('').toUpperCase();
-        $('#user-avatar').textContent = iniciais || '?';
+        pintaAvatar();
         $$('#nav a[data-roles]').forEach((a) => a.classList.toggle('hidden', !a.dataset.roles.split(',').includes(user.role)));
         render();
         verificarAtualizacaoApp();
         sincronizarPendentes();      // envia o que ficou guardado de outra sessão
+    }
+
+    // ── Avatar do cabeçalho: foto do perfil ou iniciais ──────
+    function pintaAvatar() {
+        const av = $('#user-avatar');
+        const u = state.user || {};
+        if (u.foto_path) {
+            av.innerHTML = `<img src="/api/arquivo?p=${encodeURIComponent(u.foto_path)}" alt="Foto de perfil" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block">`;
+        } else {
+            const iniciais = String(u.name || u.email || '?').trim().split(/\s+/).slice(0, 2)
+                .map((p) => p[0]).join('').toUpperCase();
+            av.textContent = iniciais || '?';
+        }
     }
 
     // ── Roteador ────────────────────────────────────────────
@@ -140,6 +151,7 @@
 
         if (view === 'usuarios') { if (!isSupervisor()) { location.hash = '#os'; return; } return renderUsuarios(); }
         if (view === 'modelo') { if (!isAdmin()) { location.hash = '#os'; return; } return renderModelo(); }
+        if (view === 'perfil') return renderPerfil();
         if (view === 'documentos') return renderDocumentos();
         if (view === 'doc') return renderDocForm(param);
         return renderOs();
@@ -1212,6 +1224,91 @@
         if (!confirm(`Excluir ${u?.name || 'este usuário'}?\n\nSe ele tiver histórico (documentos ou assinaturas), será DESATIVADO em vez de excluído.`)) return;
         // A API devolve o usuário atualizado quando desativa, ou null quando exclui
         try { const ret = await Api.deleteUser(id); toast(ret ? 'Usuário desativado (possui histórico).' : 'Usuário excluído.'); renderUsuarios(); } catch (e) { toast(e.message, true); }
+    }
+
+    // ── View: Meu perfil (foto + troca de senha) ────────────
+    async function renderPerfil() {
+        const c = $('#content');
+        const u = state.user || {};
+        const fotoUrl = u.foto_path ? `/api/arquivo?p=${encodeURIComponent(u.foto_path)}` : '';
+        c.innerHTML = `
+            <div class="page-head"><h1>Meu perfil</h1></div>
+            <div class="card">
+                <h2>Foto</h2>
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                    <span id="perfil-foto" class="avatar" style="width:72px;height:72px;font-size:22px;overflow:hidden">${
+                        fotoUrl ? `<img src="${fotoUrl}" alt="Foto de perfil" style="width:100%;height:100%;object-fit:cover;display:block">` : esc((u.name || '?').trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase())
+                    }</span>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <label class="secondary" style="cursor:pointer;padding:8px 14px;border-radius:8px">Escolher foto
+                            <input type="file" id="perfil-file" accept="image/*" class="hidden" style="display:none">
+                        </label>
+                        ${fotoUrl ? '<button type="button" class="secondary" id="perfil-remover">Remover</button>' : ''}
+                    </div>
+                </div>
+                <p class="muted">JPG ou PNG de até 2 MB. Aparece no cabeçalho do app.</p>
+            </div>
+            <div class="card">
+                <h2>Trocar senha</h2>
+                <form id="perfil-senha">
+                    <label>Senha atual<input type="password" name="atual" required autocomplete="current-password"></label>
+                    <label>Nova senha<input type="password" name="nova" required minlength="6" autocomplete="new-password"></label>
+                    <label>Repetir nova senha<input type="password" name="nova2" required minlength="6" autocomplete="new-password"></label>
+                    <div class="form-actions"><button type="submit">Trocar senha</button></div>
+                </form>
+            </div>`;
+        $('#perfil-file').addEventListener('change', async (ev) => {
+            const f = ev.target.files[0];
+            if (!f) return;
+            try {
+                const b64 = await reduzFoto(f);
+                const atualizado = await Api.uploadFoto(b64);
+                state.user = atualizado;
+                Offline.gravarSessao(atualizado);
+                pintaAvatar();
+                toast('Foto atualizada.');
+                renderPerfil();
+            } catch (e) { toast(e.message, true); }
+        });
+        $('#perfil-remover')?.addEventListener('click', async () => {
+            if (!confirm('Remover sua foto?')) return;
+            try {
+                const atualizado = await Api.removeFoto();
+                state.user = atualizado;
+                Offline.gravarSessao(atualizado);
+                pintaAvatar();
+                toast('Foto removida.');
+                renderPerfil();
+            } catch (e) { toast(e.message, true); }
+        });
+        $('#perfil-senha').addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const f = new FormData(ev.target);
+            if (f.get('nova') !== f.get('nova2')) { toast('A nova senha não confere.', true); return; }
+            try {
+                await Api.changePassword(f.get('atual'), f.get('nova'));
+                ev.target.reset();
+                toast('Senha trocada com sucesso.');
+            } catch (e) { toast(e.message, true); }
+        });
+    }
+    // Reduz a foto para no máximo 512px (economiza banda e storage)
+    function reduzFoto(file) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                const max = 512;
+                const k = Math.min(1, max / Math.max(img.width, img.height));
+                const cv = document.createElement('canvas');
+                cv.width = Math.round(img.width * k);
+                cv.height = Math.round(img.height * k);
+                cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+                URL.revokeObjectURL(img.src);
+                resolve(cv.toDataURL('image/jpeg', 0.85));
+            };
+            img.onerror = () => reject(new Error('Não consegui ler essa imagem.'));
+            img.src = URL.createObjectURL(file);
+        });
     }
 
     // ── Helpers ─────────────────────────────────────────────

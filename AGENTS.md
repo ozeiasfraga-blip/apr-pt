@@ -70,6 +70,7 @@ dos técnicos. Integra-se de forma **somente leitura** ao ERP **IXC Soft** (API 
 | Função | Técnico | Supervisor | Admin |
 |---|---|---|---|
 | Ver OS e APR/PT, preencher e assinar | próprias | todas | todas |
+| Meu perfil (foto + trocar a própria senha) | ✅ | ✅ | ✅ |
 | Autorizar (liberar) e encerrar PT | — | ✅ | ✅ |
 | Criar usuário **técnico** | — | ✅ | ✅ |
 | Redefinir senha de **técnico** | — | ✅ | ✅ |

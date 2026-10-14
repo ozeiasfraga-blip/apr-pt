@@ -13,7 +13,7 @@ engine `InnoDB`. Acesso via PDO (`src/Database.php`, singleton) — **sem ORM**.
 
 | Tabela | Colunas | Linhas* | Papel |
 |---|---|---|---|
-| `users` | 9 | 8 | Contas (técnico / supervisor / admin) |
+| `users` | 10 | 8 | Contas (técnico / supervisor / admin) |
 | `ordens_servico` | 29 | 261 | Espelho das OS do IXC |
 | **`documentos_sst`** | **40** | 18 | **Documento único APR+PT** |
 | `assinaturas` | 12 | 51 | Assinaturas (técnico, supervisor, encerramento) |
@@ -92,6 +92,7 @@ sync_log, config_textos, catalogo_*, *_cache  → sem FK (independentes)
 | `role` | enum(`tecnico`,`supervisor`,`admin`) | default `tecnico` |
 | `ixc_funcionario_id` | int NULL | FK lógico p/ `funcionarios_cache.ixc_id` |
 | `ativo` | tinyint(1) | default 1 |
+| `foto_path` | varchar(255) NULL | ex.: `fotos/perfil_4_....png` (migração 022) |
 | `created_at` / `updated_at` | timestamp | |
 
 ### `ordens_servico` — espelho do IXC
@@ -251,6 +252,7 @@ SELECT id, user_id, acao, entidade_id, detalhes, created_at
 | 019 | `019_risco_area_ao_redor.sql` | Risco: área ao redor |
 | 020 | `020_cargos_supervisor.sql` | `config_textos.cargos_supervisor` |
 | 021 | `021_pdf_drive_id.sql` | **`documentos_sst.pdf_drive_id`** (2ª cópia Drive) |
+| 022 | `022_user_foto.sql` | **`users.foto_path`** (foto de perfil) |
 
 Aplicar uma nova:
 

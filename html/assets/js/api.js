@@ -66,6 +66,8 @@ const Api = (() => {
         me: () => request('GET', '/auth/me'),
         changePassword: (current_password, new_password) =>
             request('POST', '/auth/change-password', { current_password, new_password }),
+        uploadFoto: (imagem_base64) => request('POST', '/perfil/foto', { imagem_base64 }),
+        removeFoto: () => request('DELETE', '/perfil/foto'),
 
         // Ordens de serviço
         listOs: (params = {}) => {
