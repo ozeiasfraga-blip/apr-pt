@@ -1,8 +1,8 @@
 {
-    "versao": "1.3.3",
-    "versionCode": 7,
+    "versao": "1.3.4",
+    "versionCode": 8,
     "apk": "/apk/app.apk",
     "tamanho": "1,7 MB",
     "publicado_em": "2026-10-14",
-    "novidades": "Correção da foto de perfil: agora abre a câmera e a galeria no celular (Android 11+)."
+    "novidades": "Ícone do app com a marca NWT."
 }
