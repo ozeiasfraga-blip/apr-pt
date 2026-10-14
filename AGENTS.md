@@ -72,7 +72,8 @@ dos técnicos. Integra-se de forma **somente leitura** ao ERP **IXC Soft** (API 
 | Ver OS e APR/PT, preencher e assinar | próprias | todas | todas |
 | Autorizar (liberar) e encerrar PT | — | ✅ | ✅ |
 | Criar usuário **técnico** | — | ✅ | ✅ |
-| Editar, redefinir senha ou excluir usuários | — | — | ✅ |
+| Redefinir senha de **técnico** | — | ✅ | ✅ |
+| Editar ou excluir usuários | — | — | ✅ |
 | Criar supervisor / mexer em admin | — | — | ✅ |
 | Modelo APR/PT (catálogo e textos) | — | — | ✅ |
 | Sincronização manual do IXC | — | — | ✅ |
