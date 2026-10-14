@@ -51,13 +51,7 @@ if (GoogleOAuthService::conectado()) {
     try {
         $ref = new ReflectionMethod(\App\Services\GoogleOAuthService::class, 'api');
         $ref->setAccessible(true);
-        $token = GoogleOAuthService::tokens()['access_token'] ?? '';
-        if ($token === '') {
-            // força a renovação do access_token
-            $force = new ReflectionMethod(\App\Services\GoogleOAuthService::class, 'accessToken');
-            $force->setAccessible(true);
-            $token = $force->invoke(null);
-        }
+        $token = GoogleOAuthService::accessToken(); // renova sozinho se expirado
 
         $resp = $ref->invoke(null, 'GET', 'https://www.googleapis.com/drive/v3/files?' . http_build_query([
             'q' => 'trashed = false',

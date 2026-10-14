@@ -226,7 +226,7 @@ class GoogleOAuthService
     // ── Infra ───────────────────────────────────────────────────
 
     /** Devolve um access_token válido, renovando pelo refresh_token se preciso. */
-    private static function accessToken(): string
+    public static function accessToken(): string
     {
         $t = self::tokens();
         if (!empty($t['access_token']) && (int)($t['expires_at'] ?? 0) > time() + 60) {
