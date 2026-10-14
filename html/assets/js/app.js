@@ -1118,6 +1118,11 @@
                         <option value="supervisor">Supervisor</option>
                         <option value="admin">Administrador</option>
                     </select>` : ''}
+                    <select id="u-ativo" title="Filtrar por situação">
+                        <option value="1">Ativos</option>
+                        <option value="0">Inativos</option>
+                        <option value="">Todos</option>
+                    </select>
                     <button id="btn-new-user">+ Novo usuário</button>
                 </div>
             </div>
@@ -1125,15 +1130,19 @@
         const load = async () => {
             try {
                 cachedUsers = await Api.listUsers({ search: $('#u-search').value, role: $('#u-role')?.value || '' });
-                $('#u-body').innerHTML = cachedUsers.length ? `<table class="grid">
+                // Desativados (ex.: com histórico) somem da visão padrão; "Inativos"/"Todos" mostra
+                const fAtivo = $('#u-ativo').value;
+                const visiveis = fAtivo === '' ? cachedUsers : cachedUsers.filter((u) => String(u.ativo) === fAtivo);
+                $('#u-body').innerHTML = visiveis.length ? `<table class="grid">
                     <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Func. IXC</th><th>Ativo</th><th></th></tr></thead>
-                    <tbody>${cachedUsers.map(rowUser).join('')}</tbody></table>` : '<p class="muted">Nenhum usuário encontrado.</p>';
+                    <tbody>${visiveis.map(rowUser).join('')}</tbody></table>` : '<p class="muted">Nenhum usuário encontrado.</p>';
                 bindUserActions();
             } catch (e) { $('#u-body').innerHTML = `<p class="error">${esc(e.message)}</p>`; }
         };
         $('#btn-new-user').addEventListener('click', () => userForm(null));
         $('#u-search').addEventListener('input', debounce(load, 300));
         $('#u-role')?.addEventListener('change', load);
+        $('#u-ativo').addEventListener('change', load);
         load();
     }
     function rowUser(u) {
